@@ -1,0 +1,37 @@
+* modern js
+** lecture 1
+** lecture 2
+*** variable declarations vs initializations
+    - declare just declares the variable, no surprise
+      + =var foo;= declares foo
+      + =undefined= by default
+    - initialization gives the first variable to the variable
+      + =var foo = "nice"=, foo is initialized to a string value
+
+   #+begin_src js
+     // gets us an unformatted date string
+     function getDate() {
+         // date is only accessible here within function scope, no shit
+         var date = new Date();
+         return date;
+     }
+     // works just fine
+     console.log(getDate());
+
+     // will return reference error
+     // console.log(date);
+
+     // gets us a formatted date string
+     function getDate() {
+         var date = new Date();
+         function formatDate() {
+             // Function scope means inner functions have a lexical bind to `date`
+             // date until re-defined.
+             return date.toDateString().slice(4);
+         }
+         return formatDate();
+     }
+
+     // Pretty date string
+     console.log(getDate());
+   #+end_src

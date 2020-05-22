@@ -1,0 +1,9 @@
+my org notes for the lectures i've watched and worked through on Tyler McGinnis' website, really
+nothing special here.
+
+the notes are in [[file:mcginnis.org][mcginnis.org]].
+
+the lectures have been good so far, i guess. wish there was a more robust curricula/roadmap to
+learning webdev out there that wasn't the size of FreeCodeCamp, though.
+
+
