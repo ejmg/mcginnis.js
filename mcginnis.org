@@ -2,36 +2,138 @@
 ** lecture 1
 ** lecture 2
 *** variable declarations vs initializations
-    - declare just declares the variable, no surprise
+    - declare just declares the variable
       + =var foo;= declares foo
       + =undefined= by default
     - initialization gives the first variable to the variable
       + =var foo = "nice"=, foo is initialized to a string value
 
-   #+begin_src js
-     // gets us an unformatted date string
-     function getDate() {
-         // date is only accessible here within function scope, no shit
-         var date = new Date();
-         return date;
-     }
-     // works just fine
-     console.log(getDate());
 
-     // will return reference error
-     // console.log(date);
+    - Scope: defines where functions and variables are accessible in your program
+      + two types in JS
+        1. Function: if a variable statement occurs inside a function declaration, the variables are
+           defined with function-level scope in that function, otherwise...
+        2. Global: variables are created as members of the *global object*, that is, they are given
+           global scope, when they are not declared inside a function
 
-     // gets us a formatted date string
-     function getDate() {
-         var date = new Date();
-         function formatDate() {
-             // Function scope means inner functions have a lexical bind to `date`
-             // date until re-defined.
-             return date.toDateString().slice(4);
-         }
-         return formatDate();
-     }
 
-     // Pretty date string
-     console.log(getDate());
-   #+end_src
+    McGinnis kind of confuses me here because he states the implication of these scopes is
+    contextual to the usage of =var=. That is, a variable declared with =var= in a function has Function
+    level scope but a variable "declared without =var=" is created as a property on the global
+    function. So is this also a result of the semantics of =var=? I guess? /shrug/
+
+    
+    #+CAPTION: basic example of var and function scope
+    #+begin_src js
+      // gets us an unformatted date string
+      function getDate() {
+          // date is only accessible here within function scope, no shit
+          var date = new Date();
+          return date;
+      }
+      // works just fine
+      console.log(getDate());
+
+      // will return reference error
+      // console.log(date);
+
+      // gets us a formatted date string
+      function getDate() {
+          var date = new Date();
+          function formatDate() {
+              // Function scope means inner functions have a lexical bind to `date`
+              // date until re-defined.
+              return date.toDateString().slice(4);
+          }
+          return formatDate();
+      }
+
+      // Pretty date string
+      console.log(getDate());
+    #+end_src
+
+    #+CAPTION: more complicated example of scope
+    #+begin_src js
+      function discount_prices(prices, discount) {
+          var discounted = [];
+          for (var i = 0; i < prices.length; i++) {
+              var discounted_price = prices[i] * (1 - discount);
+              var final_price = Math.round(discounted_price * 100) / 100;
+              discounted.push(final_price);
+          }
+          // we still have access to each variable in this function declaration.
+          // javascript is... really good, actually
+          console.log(i);
+          console.log(discounted_price);
+          console.log(final_price);
+          return discounted;
+      }
+
+      discount_prices([100, 200, 300], .5)
+      // can't refer to the variables just printed out to console
+      // directly, however...
+      // console.log(final_price); // error
+    #+end_src
+
+*** hoisting
+    *Hoisting*: when the Javascript interpreter evals your code, it moves all functions and variable
+    declarations at the "top" of the current scope.
+
+
+    I think this is kinda of what Haskell does more or less, as this:
+
+    #+begin_src js
+      console.log(foo); // output: undefined
+      var foo;
+    #+end_src
+    
+    ...before execution becomes this:
+    
+    #+begin_src js
+      var foo;
+      console.log(foo) // output: undefined
+    #+end_src
+
+    Taking the =discount_prices= example, it becomes the following:
+
+    #+begin_src js
+      function discount_prices(prices, discount) {
+          var discounted;
+          var i;
+          var discount_prices;
+          var final_price;
+          var discounted = [];
+          for (var i = 0; i < prices.length; i++) {
+              var discounted_price = prices[i] * (1 - discount);
+              var final_price = Math.round(discounted_price * 100) / 100;
+              discounted.push(final_price);
+          }
+          // we still have access to each variable in this function declaration.
+          // javascript is... really good, actually
+          console.log(i);
+          console.log(discounted_price);
+          console.log(final_price);
+          return discounted;
+      }
+    #+end_src
+
+**** hoisting and =var=
+
+     The reason why =var= is a matter of concern with respect to function scope is that if a variable
+     were to be declared without =var=, then the JS interpreter will continue looking "outwards" from
+     the function scope until it reaches the global scope. When no such declaration is found, the JS
+     interpreter will declare that variable as a property of the global scope. /Nice! Great language!/
+
+     Don't actually do this!
+
+*** =var= vs =let= vs =const=
+
+    The main differences between =var= and =let=:
+    - =let= is block scoped, not function scoped
+      + it is available within the set of statements between the ={}='s you declared it within
+      + this is more like sane languages with sane scoping defaults
+    - =var= is function scoped
+      + already discussed above
+        
+    Recall the =i= counter variable from the last example. If you declare it with =let=, the console
+    statement for it no longer works. =ReferenceError= will be returned.
