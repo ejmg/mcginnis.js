@@ -1,3 +1,9 @@
+* toc                                                                  :TOC:
+- [[#modern-js][modern js]]
+  - [[#lecture-1][lecture 1]]
+  - [[#lecture-2][lecture 2]]
+  - [[#lecture-3][lecture 3]]
+
 * modern js
 ** lecture 1
 ** lecture 2
@@ -128,12 +134,141 @@
 
 *** =var= vs =let= vs =const=
 
-    The main differences between =var= and =let=:
-    - =let= is block scoped, not function scoped
-      + it is available within the set of statements between the ={}='s you declared it within
-      + this is more like sane languages with sane scoping defaults
-    - =var= is function scoped
-      + already discussed above
+    The main differences: between =var= and =let=:
+    - =let=
+      + block scoped, not function scoped
+        * it is available within the set of statements between the ={}='s you declared it within
+        * this is more like sane languages with sane scoping defaults
+      + =ReferenceError= when accessing a variable before it's declared
+    - =var=
+      + function scoped
+        * Available throughout the entire function it is declared within
+      + =undefined= returned when accessing a variable before it's declared
         
     Recall the =i= counter variable from the last example. If you declare it with =let=, the console
-    statement for it no longer works. =ReferenceError= will be returned.
+    statement for it no longer works. =ReferenceError= will be returned. Similarly, if you were to try
+    to console.log() a variable before it gets assigned a value, like =discounted=, it would also
+    return a =ReferenceError= instead of =undefined= if it were declared with =var=.
+
+    #+begin_src js
+      function discount_prices(prices, discount) {
+          // returns error if attempted:
+          // console.log(discounted)
+    
+          // this still works, though, because discounted_price is decl with var
+          console.log(discounted_price); // returns undefined
+          let discounted = [];
+          for (let i = 0; i < prices.length; i++) {
+              var discounted_price = prices[i] * (1 - discount);
+              var final_price = Math.round(discounted_price * 100) / 100;
+              discounted.push(final_price);
+          }
+          // No longer will work, will throw error.
+          // console.log(i);
+          console.log(discounted_price);
+          console.log(final_price);
+          return discounted;
+      }
+
+      discount_prices([100, 200, 300], .5)
+    #+end_src
+
+    The only real difference between =let= and =const= is that =const= assignments are immutable and you
+    must declare the variable (i.e., you cannot initialize without a value). 
+
+    #+begin_src js
+      // Error!
+      // const foo;
+      const foo = "foo";
+      // Error!
+      // foo = "bar";
+      let bar = "bar";
+      bar = "foo";
+      var buz = "buz";
+      buz = "fizz";
+    #+end_src
+
+    =const='s immutability is not perfect, however:
+
+    #+begin_src js
+      const person = {
+        name: 'Kim Kardashian'
+      }
+
+      person.name = 'Kim Kardashian West' // totally legal. 
+
+      // person = {} // Error!
+    #+end_src
+
+    Reassigning the field is legal because the =const= declaration is on the object itself, not every
+    field. Changing the value of the field is not taken as reassignment, whereas attempting to
+    reassign =person= itself to ={}= is taken as illegal for that exact reason.
+
+    *try to always use const.*
+
+** lecture 3
+*** dot notation and object literals
+
+    to add something to a js object, *dot notation* works just fine. you can similarly access the
+    fields using dot notation.
+
+    #+begin_src js
+      const user = {};
+      user.name = 'elias'
+      user.handle = 'don\'t have one because twitter deleted me for no reason';
+      user.location = 'westport';
+
+      const name = user.name;
+      const local = user.location;
+    #+end_src
+
+    to add multiple fields at once, use javascript's *object literal notation*.
+
+    #+begin_src js
+      const user = {
+          name: 'elias',
+          handle: 'lol',
+          location: 'westport',
+      };
+
+      const name = user.name;
+    #+end_src
+*** object destructuring
+    *object destructuring* is effectively the opposite of object literal notation, i.e. "allows you to
+    extract multiple properties from an object". introduced by ES2015. drastically reduces
+    boilerplate.
+
+    this:
+    #+begin_src js
+      const name = user.name;
+      const handle = user.handle;
+      const local = user.location;
+      // ... and so on
+    #+end_src
+
+    becomes:
+    #+begin_src js
+      const { name, handle, local } = user;
+    #+end_src
+
+    Destructuring semantics /apply to functions/ as well:
+
+    #+begin_src js
+      function getUser() {
+          return {
+              name: 'elias',
+              handle: 'lol',
+              location: 'westport',
+          }
+      }
+
+      const { name, handle, locale } = getUser();
+    #+end_src
+
+    can also use destructuring on arrays. presumably this is useful in combination with nested json
+    structures? idk, not complaining.
+
+    #+begin_src js
+      const user = ['elias', 'lol', 'westport'];
+      const [ name, handle, local ] = user;
+    #+end_src
