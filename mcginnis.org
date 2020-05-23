@@ -3,6 +3,7 @@
   - [[#lecture-1][lecture 1]]
   - [[#lecture-2][lecture 2]]
   - [[#lecture-3][lecture 3]]
+  - [[#lecture-4][lecture 4]]
 
 * modern js
 ** lecture 1
@@ -248,7 +249,13 @@
 
     becomes:
     #+begin_src js
-      const { name, handle, local } = user;
+      const { name, handle, location } = user;
+    #+end_src
+
+    note that the variables destructuring the object *must have the same name* using plain
+    destructuring, i.e. =local= won't be defined in this statement:
+    #+begin_src js
+      const { name, handle, local} = user;
     #+end_src
 
     Destructuring semantics /apply to functions/ as well:
@@ -262,7 +269,7 @@
           }
       }
 
-      const { name, handle, locale } = getUser();
+      const { name, handle, location } = getUser();
     #+end_src
 
     can also use destructuring on arrays. presumably this is useful in combination with nested json
@@ -272,3 +279,183 @@
       const user = ['elias', 'lol', 'westport'];
       const [ name, handle, local ] = user;
     #+end_src
+
+*** advanced features of destructuring
+
+    What if you want the variable name to be different than the field?
+
+    #+begin_src js
+      const user = {
+          n: 'smalls',
+          h: '@biggiesmols',
+          l: 'westport',
+      };
+    #+end_src
+
+    to destructure the following object with better identifier names, assign them on the right using
+    syntax similar to object literal notation:
+
+    #+begin_src js
+      const {n: name, h: handle, l: location } = user;
+    #+end_src
+
+    looks useless? happens all the time. here's what the =Link= component for React Router Native
+    looks like:
+
+    #+begin_src js
+      render () {
+        // Note, component gets renamed to Component with capital C
+        const { component: Component, to , replace, ...rest } = this.props
+        return <Component {...rest} onPress={this.handlePress}/>
+      }
+    #+end_src
+
+    
+**** object destructuring on function arguments and params
+
+     We have the following function for interacting with GitHub's api:
+     #+begin_src js
+       function fetchRepos (language, minStars, maxStars, createdBefore, createAfter) {
+           // api logic
+       }
+     #+end_src
+
+     two problems introduced by this function:
+     1. need to remember order of arguments
+     2. need to remember/know what each arg is for and how we pass it in, i.e. form, type
+
+        
+     one solution is just to yeet in what we know and make the rest nulls:
+
+     #+begin_src js
+       fetchRepos('JavaScript', 100, null, new Date('01.01.2017').getTime(), null);
+     #+end_src
+
+     ... /or we could use destructuring to solve these problems/.
+     
+     #+begin_src js
+       fetchRepos({
+           language: 'JavaScript',
+           maxStars: null,
+           createdAfter: null,
+           createdBefore: new Date('01/01/2017').getTime(),
+           minStars: 100,
+       });
+     #+end_src
+
+     by using object destructuring, we remove the order of params as an issue. The arguments are
+     passed in by name with reference to the param's field names.
+
+     to solve the issue of argument types, we can use *default values* for all properties to ensure
+     all are given something that will work (otherwise, we have no clue if a value like =null= will be
+     accepted, work as intended). One ways to do this is by re-declaring the variables within the
+     function body to accept either the passed value or, if =undefined=, instead pass a different value:
+
+     #+begin_src js
+       function fetchRepos ({ language, minStars, maxStars, createdBefore, createAfter }) {
+         language = language || 'All';
+         minStars = minStars || 0;
+         maxStars = maxStars || '';
+         createdBefore = createdBefore || '';
+         createdAfter = createdAfter || '';
+       }
+     #+end_src
+
+     This is kinda ugly, though. /Object destructuring allows default values, however/, which yields a
+     much cleaner function signature:
+
+     #+begin_src js
+       function fetchRepos({ language='All', minStars=0, maxStars='', createdBefore='', createdAfter='' }) {
+           // api logic
+           console.log(language);
+           console.log(minStars);
+           console.log(maxStars);
+           console.log(createdBefore);
+           console.log(createdAfter);
+       }
+     #+end_src
+
+     Now our api call becomes the much cleaner statement:
+     #+begin_src js
+       fetchRepos({
+         language: 'JavaScript',
+         createdBefore: new Date('01/01/2017').getTime(),
+         minStars: 100,
+       });
+       // prints to console:
+       // "JavaScript"
+       // 100
+       // 
+       // 1483250400000
+       // 
+     #+end_src
+
+**** array destructuring and function params
+
+     Can do the same with arrays with respect to function params. Have the following function:
+     #+begin_src js
+       function getUserData (player) {
+         // note that we wrap our function calls in an array here
+         return Promise.all([
+           getProfile(player),
+           getRepos(player)
+         ]).then(function (data) {
+           // extract array vals
+           const profile = data[0];
+           const repos = data[1];
+
+           return {
+             profile: profile,
+             repos: repos
+           }
+         })
+       }
+     #+end_src
+
+     Side note: the above function uses *Promise*'s with calls to =getProfile= and =getRepos=, which are
+     async functions. Once those promises /resolve/, we pass a function to =.then()=, which handles the
+     results of the promise.
+
+     inside of =.then()=, we declare a function that takes a param =data=, which will be an array that
+     has indices. The first is the user's profile, the second is their repos. /Order matters here/
+     because it's an array and because of the order of the calls we made to the functions returning
+     promises.
+
+     To take advantage of the array structure, we can destructure the values returned by our
+     promises so don't need to extract them manually:
+
+     #+begin_src js
+       function getUserData (player) {
+         return Promise.all([
+           getProfile(player),
+           getRepos(player)
+         ]).then(function (data) {
+           // we destructure the values of data here
+           const [ profile, repos ] = data
+           return {
+             profile: profile,
+             repos: repos
+           }
+         })
+       }
+     #+end_src
+
+     One final improvement is, just like with objects, is to move the restructuring directly into
+     the params of the function (passed to =.then()=) itself:
+     
+     #+begin_src js
+       function getUserData (player) {
+         return Promise.all([
+           getProfile(player),
+           getRepos(player)
+           // yeet, clean code
+         ]).then(([ profile, repos ]) => {
+           return {
+             profile: profile,
+             repos: repos
+           }
+         })
+       }
+     #+end_src
+
+** lecture 4
