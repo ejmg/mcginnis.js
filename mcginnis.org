@@ -4,7 +4,7 @@
   - [[#lecture-2][lecture 2]]
     - [[#variable-declarations-vs-initializations][variable declarations vs initializations]]
     - [[#hoisting][hoisting]]
-    - [[#var-vs-let-vs-const][=var= vs =let= vs =const=]]
+    - [[#var-vs-let-vs-const][​=var= vs =let= vs =const=]]
   - [[#lecture-3][lecture 3]]
     - [[#dot-notation-and-object-literals][dot notation and object literals]]
     - [[#object-destructuring][object destructuring]]
@@ -17,6 +17,23 @@
   - [[#lecture-6][lecture 6]]
     - [[#template-literals][template literals]]
   - [[#lecture-7][lecture 7]]
+    - [[#arrow-functions][arrow functions]]
+    - [[#managing-this-with-arrow-functions][managing =this= with arrow functions]]
+    - [[#nice-to-knows-about-arrow-functions]["nice to knows" about arrow functions]]
+  - [[#lecture-8][lecture 8]]
+    - [[#default-params][default params]]
+    - [[#required-arguments]["required" arguments]]
+  - [[#lecture-9][lecture 9]]
+    - [[#compiling-vs-polyfills-with-babel][compiling vs Polyfills with Babel]]
+  - [[#lecture-10][lecture 10]]
+    - [[#callbacks][callbacks]]
+    - [[#darkside-of-callbacks][darkside of callbacks]]
+    - [[#promises][Promises]]
+    - [[#chaining][chaining]]
+    - [[#resolve][resolve]]
+    - [[#improvements-to-chaining-and-resolve][improvements to chaining and resolve]]
+    - [[#error-handling][error handling]]
+  - [[#lecture-11][lecture 11]]
 
 * modern js
 ** lecture 1
@@ -146,7 +163,7 @@
 
      Don't actually do this!
 
-*** =var= vs =let= vs =const=
+*** ​=var= vs =let= vs =const=
 
     The main differences: between =var= and =let=:
     - =let=
@@ -588,8 +605,9 @@
     #+end_src
 
     With *template literals*, instead of worrying about escaping all special characters and
-    concatenating a bunch of strings together, you instead wrap the string with =``='s instead of =""='s
-    or =''='s. Any expression you wish to inject into the template is surrounded by =${/* expr here */}=.
+    concatenating a bunch of strings together, you instead wrap the string with =``='s instead of
+    ~""~s or ~''~s. Any expression you wish to inject into the template is surrounded by =${/* expr
+    here */}=.
 
     Now look at the same function with template literals:
 
@@ -607,4 +625,813 @@
       }
     #+end_src
 ** lecture 7
+*** arrow functions
+    *arrow functions* allow for more succinct code and better management over the semantics of the
+    =this= keyword.
 
+    refresh on basic structure/syntax of function declarations:
+
+    #+begin_src js
+      // function declaration
+      function add (x,y) {
+          return x + y;
+      }
+
+      // function expr
+      const add = function (x,y) {
+          return x + y;
+      }
+    #+end_src
+
+    now the above function as an arrow function:
+    #+begin_src js
+      const add = (x,y) => {
+          return x + y;
+      }
+    #+end_src
+
+**** example of reducing boilerplate
+
+     here's a shitty api function that returns a given user's tweets with > 50 faves /and/ retweets:
+     #+begin_src js
+       function getTweets (uid) {
+         return fetch('https://api.users.com/' + uid)
+           .then(function (response) {
+             return response.json()
+           })
+           .then(function (response) {
+             return response.data
+           }).then(function (tweets) {
+             return tweets.filter(function (tweet) {
+               return tweet.stars > 50
+             })
+           }).then(function (tweets) {
+             return tweets.filter(function (tweet) {
+               return tweet.rts > 50
+             })
+           })
+       }
+     #+end_src
+
+     note the boilerplate introduced by having to explicitly declare =function= for each anonymous
+     function being passed to each =.then()= call that operates over the data returned. arrow
+     functions can help remove such boilerplate which makes for a modest improvement:
+     #+begin_src js
+       function getTweets (uid) {
+           return fetch('https://api.users.com/' + uid)
+                // look ma, no function keyword
+               .then((response) => {
+                   return response.json()
+               })
+               .then((response) => {
+                   return response.data
+               }).then((tweets) => {
+                   return tweets.filter((tweet) => {
+                       return tweet.stars > 50
+                   })
+               }).then((tweets) => {
+                   return tweets.filter((tweet) => {
+                       return tweet.rts > 50
+                   })
+               })
+       }
+     #+end_src
+
+**** implicit returns with arrow functions
+
+     but wait! we can reduce the boilerplate even more!
+     
+     with arrow functions, if your function is a one-liner ("concise body"), then you can use the
+     notion of *implicit returns*, which allow the omitting of the =return= keyword.
+
+     so something like =add= can be transformed as such:
+     #+begin_src js
+       // old, tired
+       function add(x,y) {
+           return x + y;
+       }
+       // new, wired
+       const add = (x,y) => x + y;
+     #+end_src
+    
+     now the tweet example can be further improved as such:
+     #+begin_src js
+       // aight this is legit better
+       function getTweets (uid) {
+         return fetch('https://api.users.com/' + uid)
+           .then((response) => response.json())
+           .then((response) => response.data)
+           .then((tweets) => tweets.filter((tweet) => tweet.stars > 50))
+           .then((tweets) => tweets.filter((tweet) => tweet.rts > 50))
+       }
+     #+end_src
+
+     /furthermore/, *if the arrow function only has one param, then you can drop the parentheses
+     around it entirely*:
+     #+begin_src js
+       // NICE
+       function getTweets (uid) {
+         return fetch('https://api.users.com/' + uid)
+           .then(response => response.json())
+           .then(response => response.data)
+           .then(tweets => tweets.filter((tweet) => tweet.stars > 50))
+           .then(tweets => tweets.filter((tweet) => tweet.rts > 50))
+       }     
+     #+end_src
+
+     [[https://thumbs.gfycat.com/ZigzagDistinctBoilweevil-max-1mb.gif]]
+
+*** managing =this= with arrow functions
+    
+    arrow functions help manage the semantics of =this= because they don't *create their own context*.
+
+    Here's a blob of react code that I don't understand/have any clue what it does:
+    #+begin_src js
+      class Popular extends React.Component {
+          constructor(props) {
+              super();
+              this.state = {
+                  repos: null,
+              };
+
+              this.updateLanguage = this.updateLanguage.bind(this);
+          }
+          componentDidMount () {
+              this.updateLanguage('javascript')
+          }
+          updateLanguage(lang) {
+              api.fetchPopularRepos(lang)
+                  .then(function (repos) {
+                      this.setState(function () {
+                          return {
+                              repos: repos
+                          }
+                      });
+                  });
+          }
+          render() {
+              // Stuff
+          }
+      }
+    #+end_src
+
+    /it doesn't work lol/. why? because it doesn't bind =this= correctly. apparently this is how you
+    would fix this using ES5:
+
+    #+begin_src js
+      class Popular extends React.Component {
+          constructor(props) {
+              super();
+              this.state = {
+                  repos: null,
+              };
+
+              this.updateLanguage = this.updateLanguage.bind(this);
+          }
+          componentDidMount () {
+              this.updateLanguage('javascript')
+          }
+          updateLanguage(lang) {
+              api.fetchPopularRepos(lang)
+                  .then(function (repos) {
+                      this.setState(function () {
+                          return {
+                              repos: repos
+                          }
+                      });
+                    // lol this is the fix. incredible.
+                  }.bind(this)); 
+          }
+          render() {
+              // Stuff
+          }
+      }
+    #+end_src
+
+    apparently people actually put up with that bullshit for like.... years. anyway, arrow functions
+    make that go away. fixing the =updateLanguage= method reduces both boilerplate, makes it more
+    readable, and easier to reason about because of better =this= ergonomics.
+
+    #+begin_src js
+      updateLanguage(lang) {
+        api.fetchPopularRepos(lang)
+          .then((repos) => {
+            this.setState(() => {
+              return {
+                repos: repos
+              }
+            });
+          });
+      }
+    #+end_src
+
+*** "nice to knows" about arrow functions
+**** differentiating function bodies and implicit returns
+
+     say we want to optimize =updateLanguage= more by using an implicit return on the object we
+     return from the nested =.then()= call.
+
+     #+begin_src js
+       api.fetchPopularRepos(lang)
+           .then((repos) => {
+               this.setState(() => {
+                   // no more return statement
+                   repos: repos
+               });
+           });
+     #+end_src
+
+     *problem*: this is indistinguishable from declaring a function body vs an implicit return from
+     the perspective of the js interpreter. this will error out.
+      
+     *solution*: wrap implicit return in =()=.
+
+     #+begin_src js
+       api.fetchPopularRepos(lang)
+           .then((repos) => {
+                                   // here, we wrap the {} with ()
+               this.setState(() => ({
+                   repos: repos
+               })); // note extra closing )
+           });
+     #+end_src
+
+**** leverage shorthand property and method names with arrow functions
+
+     can further improve the above snippet by dropping the field name entirely since the variable
+     and field are named the same. this allows us to also drop the wrapping ={}= and =()='s entirely.
+
+     #+begin_src js
+       api.fetchPopularRepos(lang)
+           .then((repos) => 
+               this.setState(() => repos)
+           );
+     #+end_src
+
+**** logging inside of arrow functions with implicit returns
+
+     how would you log the state within the component function above? one solution would be to
+     return the explicit =return= statement so you can add a console call before it:
+
+     #+begin_src js
+       this.setState((nextState) => {
+           console.log(nextState)
+           return {
+               repos: repos
+           }
+       });
+     #+end_src
+
+     it works, but it makes us re-add a bunch of boilerplate just for logging. in classic javascript
+     fashion, let's do some really janky shit that works and is seemingly encouraged so we can keep
+     our code ""clean"":
+     #+begin_src js
+       this.setState((nextState) => console.log(nextState) || ({
+           repos: repos
+       }));
+     #+end_src
+
+     ... /nice? i guess?/
+     
+** lecture 8
+*** default params
+
+    traditional approach to setting default values for function arguments was to use =||= to check for
+    false-y values like =undefined= and =0=.
+
+    so if we have a function that calculates payment and takes the arguments =price=, =salesTax=, and
+    =discount= where only =price= is required, we could define =0.5= and =0= as the default values for the
+    latter params respectively:
+    #+begin_src js
+      function calcPayment(price, salesTax, discount) {
+          salesTax = salesTax || 0.5;
+          discount = discount || 0;
+          // stuff
+      }
+    #+end_src
+
+    *problem*: what happens when the function consumer passes 0 to =salesTax=? given =0= is taken as
+     false-y, that means it will get incorrectly overwritten by the default value! what needs to
+     happen instead of checking for false-y values is checking for /undefined/ values.
+
+    #+begin_src js
+      function calcPayment(price, salesTax, discount) {
+          salesTax = typeof salesTax === 'undefined' ? 0.5 || salesTax;
+          discount = typeof discount === 'undefined' ? 0 || discount;
+          // stuff
+      }    
+    #+end_src
+
+    works as intended, but now it's kinda verbose.
+
+    ES6 has *default parameters*, which achieve the desired behavior above but with a cleaner syntax:
+    #+begin_src js
+      function calcPayment(price, salesTax = 0.5, discount = 0) {
+          // stuff
+      }
+    #+end_src
+*** "required" arguments
+
+    what if you want to /enforce/ required arguments by throwing an exception when a function is not
+    given one? define a function like so:
+    #+begin_src js
+      function isRequired(name) {
+          throw new Error(`${name} is required`)
+      }
+    #+end_src
+
+    and now you can simply wrap the required parameter with a default value specifying it's name:
+    #+begin_src js
+      function calcPayment(price = isRequired('price'), 
+                           salesTax = 0.5,
+                           discount = 0) {
+          // stuff
+      }    
+    #+end_src
+
+    *nice*. whether this type of defensive programming is "good" or not is on you/your
+     team/god/whatever.
+** lecture 9
+*** compiling vs Polyfills with Babel
+
+    js is constantly changing and being updated which results in the browser ecosystem becoming
+    fractured and lagging in terms of feature implementations. there are two things that can be done
+    to fix this.
+
+    the first major thing is transpiling your modern js into equivalent js that uses older, more
+    widely supported syntax and features. this is traditionally done via Babel. look at the
+    following modern example code and its transformation:
+    #+begin_src js
+      // new, fancy js
+      const getProfile = username => {
+          return fetch(`https://api.github.com/users/${username}`)
+              .then((response) => response.json())
+              .then(({ data }) => ({
+                  name: data.name,
+                  location: data.location,
+                  company: data.company,
+                  blog: data.blog.includes('https') ? data.blog : null
+              }))
+              .catch((e) => console.warn(e))
+      }
+
+      // transformed js via babel
+      var getProfile = function getProfile(username) {
+        return fetch('https://api.github.com/users/' + username).then(function (response) {
+          return response.json();
+        }).then(function (_ref) {
+          var data = _ref.data;
+          return {
+            name: data.name,
+            location: data.location,
+            company: data.company,
+            blog: data.blog.includes('https') ? data.blog : null
+          };
+        }).catch(function (e) {
+          return console.warn(e);
+        });
+      };
+    #+end_src
+
+    this will be guaranteed to work in older browsers by transforming newer ES6 features into js
+    that browsers know how to execute.... /almost/.
+
+    notice that the =fetch= and =includes= function calls were not transformed into their "analog"
+    equivalents of =indexOf= and =XMLHttpRequest= despite their "newness". why didn't this occur?  babel
+    only transforms your newer syntax into older equivalents and *does not handle new javascript
+    primitives or properties required for the browser's global namespace*.
+
+    to finish the transformation into functional js that more browsers can use, *Polyfill* is required
+    to inject the remaining features and properties to make newer code work.
+
+    there is a long ass list of features that babel specifies as supported or in need of
+    polyfilling. rather than reading them, just [[https://babeljs.io/][use their documentation to know when polyfill is needed]]. 
+** lecture 10
+
+   not all websites can be static, which means having to cope with things like asynchronously
+   handling data and events.
+*** callbacks
+    
+    javascript allows for function composition. a function that takes another function as an
+    argument is a *higher order function*. in js land, a function passed to a HO function is a
+    *callback function*.
+
+    #+begin_src js
+      const add = (x,y) => x + y;
+      const addFive = (x, addRef) => addRef(x, 5);
+    #+end_src
+
+    there are two popular uses for callback functions:
+    1. transforming values via fp patterns like =.map()=
+    2. delaying the execution of a function until some time/event occurs
+
+       JQuery stuff is a good example for this:
+       #+begin_src js
+         $('#button').on('click', () => 
+           console.log('ya clicked me'))
+       #+end_src
+
+       
+    the examples thus far have been synchronous, but the latter case is what async programming
+    concerns. instead of delaying a function until some event occurs, /we can delay a function until
+    we get the data we need/.
+
+    why use async? otherwise, code like the following results in websites that delay full
+    loading/rendering until the query finishes its completion:
+    #+begin_src js
+      // updateUI and showError are irrelevant.
+      // Pretend they do what they sound like.
+
+      const id = 'tylermcginnis'
+
+      $.getJSON({
+        url: `https://api.github.com/users/${id}`,
+        success: updateUI,
+        error: showError,
+      })
+    #+end_src
+
+    /the UI cannot be updated until we have the user's data/. this is undesirable for user facing
+    applications. instead, we can ask our program to execute as normal while waiting for a piece of
+    data to finish processing/being requested. if it succeeds, update the UI as necessary. if it
+    doesn't, maybe throw an error or otherwise handle the exception as necessary. this is what async
+    programming allows us to do.
+
+*** darkside of callbacks
+
+    *callback hell* occurs from the original way of handling async events in js. instead of nice,
+     clean, and linear code that "sequentially" handles logic that is, in all reality, asynchronous,
+     you get a pyramid of death that requires a lot of mental overhead to solve. take the following
+     example:
+     #+begin_src js
+       // updateUI, showError, and getLocationURL are irrelevant.
+       // Pretend they do what they sound like.
+
+       const id = 'tylermcginnis'
+
+       // yikes!
+       $("#btn").on("click", () => {
+           $.getJSON({
+               url: `https://api.github.com/users/${id}`,
+               success: (user) => {
+                   $.getJSON({
+                       url: getLocationURL(user.location.split(',')),
+                       success (weather) {
+                           updateUI({
+                               user,
+                               weather: weather.query.results
+                           })
+                       },
+                       error: showError,
+                   })
+               },
+               error: showError
+           })
+       })
+     #+end_src
+     
+     the above code says the following:
+     - don't run the AJAX request until the =btn= element is clicked
+     - once clicked, make the first request for the user's github
+       + if the request fails, show an error
+     - if that request succeeds, invoke =updateUI=
+       + otherwise, show an error
+
+         
+     this pattern of callback programming is difficult to mentally parse and is error
+     prone. modularizing the code can help to some degree, but then introduces a significant amount
+     of boilerplate code that makes what is  happening ostensibly harder to understand as the logic
+     is now broken between a bunch of smaller code snippets like so:
+     #+begin_src js
+       function getUser(id, onSuccess, onFailure) {
+           $.getJSON({
+               url: `https://api.github.com/users/${id}`,
+               success: onSuccess,
+               error: onFailure
+           })
+       }
+
+       function getWeather(user, onSuccess, onFailure) {
+           $.getJSON({
+               url: getLocationURL(user.location.split(',')),
+               success: onSuccess,
+               error: onFailure,
+           })
+       }
+
+       $("#btn").on("click", () => {
+           getUser("tylermcginnis", (user) => {
+               getWeather(user, (weather) => {
+                   updateUI({
+                       user,
+                       weather: weather.query.results
+                   })
+               }, showError)
+           }, showError)
+       })
+     #+end_src
+
+**** inversion of control
+
+     aside from callback hell, callbacks tend to introduce *inversion of control*. when you hand off
+     your callback function to the consuming HO function, you are /assuming/ the receiving program
+     will be responsible and /only use the callback when it's supposed to/. you are handing the
+     control of your program to another program. with 3rd party libraries, there is a good chance
+     the API will result in unintended behavior as the library either intentionally or accidentally
+     breaks the logic of the callback.
+
+     #+begin_src js
+       function criticalFunction () {
+           // It's critical that this function
+           // gets called and with the correct
+           // arguments.
+       }
+
+       thirdPartyLib(criticalFunction)
+     #+end_src
+
+     in the above snippet, you have /zero control of whether or how =criticalFunction= is called/
+
+*** Promises
+
+    Rather than giving away /your/ callback to a program and hoping they use it as intended, we can
+    make programs /promise/ to do something for /us/.
+
+    A *promise* can be in one of three states:
+    - *pending*
+    - *fulfilled*
+    - *rejected*
+
+      
+    *promises* were introduced to reduce the complexity of making async requests.
+
+**** how do you create a promise?
+
+     straightforward: create a =new= instance of a =Promise=:
+     #+begin_src js
+       const promise = new Promise()
+     #+end_src
+
+**** how do you change the status of a promise?
+
+     the =Promise= constructor takes one argument: the callback function. inside of this function you
+     do whatever async action/logic you need. in addition to this, the callback will, in turn, be
+     given two arguments:
+     1. =resolve=: a function that allows you to change the status of the promise to =fulfilled=
+     2. =reject=: a function that allows you to change the status of the promise to =rejected=
+
+        
+     each will get called in their respective case of success or failure of the promise.
+
+     here's a trivial example that only executes the successful case of =resolve=:
+     #+begin_src js
+       const promise = new Promise((resolve, reject) => {
+           // set to resolve in 2 seconds
+           setTimeout(() => {
+               resolve()
+           }, 2000)
+       });
+
+       // check status of promise
+       console.log('promise is pending -', promise);
+
+       // wait 2 seconds to check again
+       setTimeout(() => {
+           console.log('promise should be resolved -', promise)
+       }, 2000);
+     #+end_src
+
+**** how do you listen for when the status of a promise changes?
+
+     probably the most critical aspect of Promises is what to do with them.
+
+     underneath the hood, =Promises= are plain javascript objects with two methods, which each take a
+     function:
+     1. *then()*: when the status of the promise is changed to =fulfilled=, the function passed to
+        =then()= gets invoked, often on the data returned by the promise.
+     2. *catch()*: when the status of the promise is changed to =rejected=, the function passed to
+        =catch()= gets invoked. this can handle any error codes, data handled to it or take
+        alternative action.
+
+        
+     the following code creates two different promises that demonstrate the execution of =then()= and
+     =catch()= respectively:
+     #+begin_src js
+       function onSuccess () {
+         console.log('Success!')
+       };
+
+       function onError () {
+         console.log('💩')
+       };
+
+       const promise1 = new Promise((resolve, reject) => {
+         setTimeout(() => {
+           resolve()
+         }, 2000)
+       });
+
+       promise1.then(onSuccess);
+       promise1.catch(onError);
+
+       const promise2 = new Promise((resolve, reject) => {
+         setTimeout(() => {
+           reject()
+         }, 2000)
+       });
+
+       promise2.then(onSuccess);
+       promise2.catch(onError);
+     #+end_src
+
+     
+*** chaining
+    both =then()= and =catch()= *return a promise*. this is critical because it then allow us to *chain*
+    promises.
+
+    here's a contrived example that shows how we can log a sequence of promises by chaining:
+    #+begin_src js
+      function getPromise () {
+          return new Promise((resolve) => {
+              setTimeout(resolve, 2000)
+          })
+      }
+
+      function logA () {
+          console.log('A')
+      }
+
+      function logB () {
+          console.log('B')
+      }
+
+      function logCAndThrow () {
+          console.log('C')
+
+          throw new Error()
+      }
+
+      function catchError () {
+          console.log('Error!')
+      }
+
+      getPromise()
+          .then(logA) // A
+          .then(logB) // B
+          .then(logCAndThrow) // C
+          .catch(catchError) // Error!
+    #+end_src
+
+    *chaining* allows us to use promises in such a way that our code maintains a linear form which
+     makes reasoning about asynchronous logic easier.
+
+
+
+
+
+     returning to the modularized callback hell example, we can now refactor it into legitimately
+     clean and straightforward code via =Promise='s and chaining:
+     #+begin_src js
+       function getUser(id) {
+           return new Promise((resolve, reject) => {
+               $.getJSON({
+                   url: `https://api.github.com/users/${id}`,
+                   success: resolve,
+                   error: reject
+               })
+           })
+       }
+
+       function getWeather(user) {
+           return new Promise((resolve, reject) => {
+               $.getJSON({
+                   url: getLocationURL(user.location.split(',')),
+                   success: resolve,
+                   error: reject,
+               })
+           })
+       }
+
+       $("#btn").on("click", () => {
+           getUser("tylermcginnis")
+               .then(getWeather)
+               .then((weather) => {
+                   // We need both the user and the weather here.
+                   // Right now we just have the weather
+                   updateUI() // ????
+               })
+               .catch(showError)
+       })
+     #+end_src
+
+     already, this code looks better; however, we still have a problem. inside of our actual JQuery
+     call, when we get to the =.then()= call on the results of the =getWeather= promise, we only have
+     access to =weather= as a value but need =user= as well. How do we ensure =user= gets passed along the
+     promise chain?
+
+*** resolve
+    *resolve*: =resolve()= is a function that allows you to pass on any arguments to the next =then()=
+    invocation on a chain of promises.
+
+    refactoring =getWeather= to use =resolve()=:
+    #+begin_src js
+      function getWeather(user) {
+          return new Promise((resolve, reject) => {
+              $.getJSON({
+                  url: getLocationURL(user.location.split(',')),
+                  success(weather) {
+                      // in our success case, we call resolve() and just
+                      // pass what we need to make it into the next .then() call
+                      resolve({ user, weather: weather.query.results })
+                  },
+                  error: reject,
+              })
+          })
+      }
+    #+end_src
+
+    Now our JQuery call becomes:
+    #+begin_src js
+      $("#btn").on("click", () => {
+          getUser("tylermcginnis")
+              .then(getWeather)
+              .then((data) => updateUI(data))
+              .catch(showError)
+      })
+    #+end_src
+
+    much cleaner.
+
+*** improvements to chaining and resolve
+
+    our code is nice, but could we make it nicer? what if we could write it like normal synchronous
+    code:
+    #+begin_src js
+      $("#btn").on("click", () => {
+          const user = getUser('tylermcginnis')
+          const weather = getWeather(user)
+
+          updateUI({
+              user,
+              weather,
+          })
+      })
+    #+end_src
+
+    in this situation, we have what looks like /truly synchronous/ code that actually behaves
+    asynchronously; however, this would make the js engine kill itself. it's hiding the fact that
+    each function invocation within it is returning a promise, and pretending otherwise won't make
+    it go away.
+
+    but what if... we could explicitly tell js that we were making an *async* function?
+    #+begin_src js
+                            // "hey js repl, this arrow function is async, watch out okay?
+      $("#btn").on("click", async () => {
+          const user = getUser('tylermcginnis')
+          const weather = getWeather(user)
+
+          updateUI({
+              user,
+              weather,
+          })
+      })
+    #+end_src
+
+    alright, but now how does the js interpreter know where in this function call is the async
+    behavior that it has to wait on? tell it by using the *await* keyword:
+    #+begin_src js
+      $("#btn").on("click", async () => {
+          const user = await getUser('tylermcginnis')
+          const weather = await getWeather(user.location)
+
+          updateUI({
+              user,
+              weather,
+          })
+      })
+    #+end_src
+
+    *async functions* return promises while *await* halts the execution of an async function until the
+    expression following it returns /something/.
+
+*** error handling
+
+    when using async/await, instead of using =catch()= as with non-async/await chaining of promises,
+    wrap them in *try/catch* blocks:
+    #+begin_src js
+      $("#btn").on("click", async () => {
+          try {
+              const user = await getUser('tylermcginnis')
+              const weather = await getWeather(user.location)
+
+              updateUI({
+                  user,
+                  weather,
+              })
+          } catch (e) {
+              showError(e)
+          }
+      })
+    #+end_src
+
+** lecture 11
