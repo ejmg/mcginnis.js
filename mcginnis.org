@@ -1,9 +1,22 @@
-* toc                                                                  :TOC:
+* toc                                                                :TOC_3:
 - [[#modern-js][modern js]]
   - [[#lecture-1][lecture 1]]
   - [[#lecture-2][lecture 2]]
+    - [[#variable-declarations-vs-initializations][variable declarations vs initializations]]
+    - [[#hoisting][hoisting]]
+    - [[#var-vs-let-vs-const][=var= vs =let= vs =const=]]
   - [[#lecture-3][lecture 3]]
+    - [[#dot-notation-and-object-literals][dot notation and object literals]]
+    - [[#object-destructuring][object destructuring]]
+    - [[#advanced-features-of-destructuring][advanced features of destructuring]]
   - [[#lecture-4][lecture 4]]
+    - [[#shorthand-properties][shorthand properties]]
+    - [[#shorthand-method][shorthand method]]
+  - [[#lecture-5][lecture 5]]
+    - [[#computed-views][computed views]]
+  - [[#lecture-6][lecture 6]]
+    - [[#template-literals][template literals]]
+  - [[#lecture-7][lecture 7]]
 
 * modern js
 ** lecture 1
@@ -459,3 +472,139 @@
      #+end_src
 
 ** lecture 4
+*** shorthand properties
+
+    *shorthand property*: whenever you have a variable that matches the name of a property on an
+    object, you can omit the property name when constructing an instance of that object.
+
+    the following:
+    #+begin_src js
+      function formatMessage (name, id, avatar) {
+          return {
+              name: name,
+              id: id,    
+              avatar: avatar,    
+              timestamp: Date.now()
+          }
+      }
+    #+end_src
+
+    can be shortened to:
+    #+begin_src js
+      function formatMessage (name, id, avatar) {
+          return {
+              name,    
+              id,    
+              avatar,    
+              timestamp: Date.now()
+          }
+      }
+    #+end_src
+*** shorthand method
+    *shorthand method names*: when a function is a property on an object, that makes it a *method*. As
+     of ES6, when constructing an object that has a function as a field you can now omit the
+     =function= keyword entirely.
+
+     The following:
+     #+begin_src js
+       function formatMessage (name, id, avatar) {
+           return {
+               name,
+               id,
+               avatar,
+               timestamp: Date.now(),
+               save: function () {
+                   // save message    
+               }  
+           }
+       }
+     #+end_src
+
+     can become:
+     #+begin_src js
+       function formatMessage (name, id, avatar) {
+           return {
+               name,
+               id,
+               avatar,
+               timestamp: Date.now(),
+               // wow i saved like 8 whole keystrokes wow lol
+               save () {
+                   // save message    
+               }  
+           }
+       }     
+     #+end_src
+** lecture 5
+*** computed views
+    *computed property names*: as of ES6, you can have expressions that get evaluated as properties on
+    an object.
+
+    Say you have a function that takes a (=key=, =value=) pair and returns an object that maps =key= as a
+    property with =value= as its value:
+
+    #+begin_src js
+      function objectify (key, value) {
+          let obj = {}
+          obj[key] = value
+          return obj
+      }
+
+      objectify('name', 'elias') // { name: 'elias' }
+    #+end_src
+
+    Now with computed property names you can do this:
+    #+begin_src js
+      function objectify (key, value) {
+          return {
+              [key]: value
+          }
+      }    
+    #+end_src
+
+    The =[]= are critical to the behavior of this feature. Note how the following function behaves:
+    #+begin_src js
+      function confusing_var_names(bar, bat) {
+          return {
+              [bar]: bat,
+              is: 'forever'
+          }
+      }
+
+      confusing_var_names('wu', 'tang') // returns { wu: 'tang', is: 'forever' }
+    #+end_src
+** lecture 6
+*** template literals
+    In the olden days, when you wanted to return a formatted strings with a bunch of variables
+    injected into it, you had to do horrid shit like this:
+    #+begin_src js
+      function makeGreetingTemplate (name, email, id) {
+          return '<div>' +
+              '<h1>Hello, ' + name + '.</h1>' +
+              '<p>We\'ve emailed you at ' + email + '. ' +
+              'Your user id is "' + id + '".</p>' +
+              '</div>'
+      }
+    #+end_src
+
+    With *template literals*, instead of worrying about escaping all special characters and
+    concatenating a bunch of strings together, you instead wrap the string with =``='s instead of =""='s
+    or =''='s. Any expression you wish to inject into the template is surrounded by =${/* expr here */}=.
+
+    Now look at the same function with template literals:
+
+    #+begin_src js
+      function makeGreetingTemplate (name, email, id) {
+          return `
+          <div>
+            <h1>Hello, ${name}</h1>
+            <p>
+              We've email you at ${email}.
+              Your user id is "${id}".
+            </p>
+          </div>
+        `
+      }
+    #+end_src
+** lecture 7
+
