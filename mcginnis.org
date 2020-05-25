@@ -34,6 +34,27 @@
     - [[#improvements-to-chaining-and-resolve][improvements to chaining and resolve]]
     - [[#error-handling][error handling]]
   - [[#lecture-11][lecture 11]]
+    - [[#objects][objects]]
+    - [[#functional-instantiation][functional instantiation]]
+    - [[#functional-instantiation-with-shared-methods][Functional Instantiation with Shared Methods]]
+    - [[#objectcreate][Object.create]]
+    - [[#functional-instatiation-with-shared-methods-and-objectcreate][Functional Instatiation with Shared Methods and Object.create]]
+    - [[#prototypal-instantiation][Prototypal Instantiation]]
+    - [[#psuedo-classical-instantiation][psuedo-classical instantiation]]
+    - [[#classes][classes]]
+    - [[#array-methods][array methods]]
+    - [[#static-methods][static methods]]
+    - [[#getting-the-prototype-of-an-object][getting the prototype of an object]]
+    - [[#determining-if-a-property-lives-on-a-prototype][determining if a property lives on a prototype]]
+    - [[#check-if-object-is-an-instance-of-class][check if object is an instance of class]]
+    - [[#creating-new-agnostic-constructor-functions][creating new agnostic constructor functions]]
+    - [[#recreating-the-objectcreate-method][recreating the =Object.create()= method]]
+    - [[#arrow-functions-1][arrow functions]]
+  - [[#lecture-12][lecture 12]]
+    - [[#why-modules][why modules]]
+    - [[#js-modules][js modules]]
+    - [[#js-modules-from-the-ground-up][js modules from the ground up]]
+    - [[#immediately-invoked-function-expressions][Immediately Invoked Function Expressions]]
 
 * modern js
 ** lecture 1
@@ -1715,3 +1736,400 @@
     #+end_src
 
 *** array methods
+    connecting to js classes and prototypes, the methods provided for array
+    manipulation/transformation are a result of the same pattern.
+
+    if you evaluate =console.log(Array.prototype)= in the developer console on your browser, you will
+    see something like:
+
+    [[file:assets/Screenshot_20200525_131458.png]]
+
+    
+    this goes for all Objects in js. whenever if an property gets looked up against an object and it
+    doesn't exist, along for each delegated object, then eventually it gets looked up against
+    =Object.prototype= itself. this is why all objects have methods like =toString()= and
+    =hasOwnProperty()=
+
+*** static methods
+
+    what if an object entity has a method that is unique to that object type (class, function, etc)
+    but does not need to be shared across each instance, i.e. each instance can use the same single
+    function across each rather than having their own? this is a *static method* by definition, and
+    its declared within the =class= declaration like any other function aside from being prefixed with
+    the =static= keyword.
+
+    for animal, we might have a method that determines which animal, of all the animals, needs to be
+    fed next:
+    #+begin_src js
+      class Animal {
+          /* other methods */
+          static nextToEat(animals) {
+              const sortedByLeastEnergy = animals.sort((a,b) => {
+                  return a.energy - b.energy
+              })
+
+              return sortedByLeastEnergy[0].name
+          }
+      }
+
+      const leo = new Animal('Leo', 7)
+      const snoop = new Animal('Snoop', 10)
+
+      console.log(Animal.nextToEat([leo, snoop])) // nice
+    #+end_src
+
+    =static= is syntactic sugar just like =class= is and in ES5 would otherwise be implemented as so:
+    #+begin_src js
+      Animal.nextToEat = function (nextToEat) {
+          const sortedByLeastEnergy = animals.sort((a,b) => {
+              return a.energy - b.energy
+          })
+
+          return sortedByLeastEnergy[0].name
+      }
+    #+end_src
+    where we make the function a property of /the =Animal= function/ rather than its /prototype/
+
+*** getting the prototype of an object
+
+    regardless of how an object was instantiated, you can always get a reference to its =prototype=
+    via =.getPrototypeOf()=:
+    #+begin_src js
+      const tux = new Animal('tux', 10);
+      const tux_proto = Object.getPrototypeOf(tux);
+      console.log(tux_proto); // {constructor: ƒ, eat: ƒ, sleep: ƒ, play: ƒ}
+
+      tux_proto === Animal.prototype // true
+    #+end_src
+
+
+    two major takeaways:
+    1. =prototype='s have every method defined on them + their constructor
+       - this means that an instance of an object can access its own constructor
+       - this occurs via delegation via =Object.create=, which implicitly happens between an object
+         instance and its prototype using js =class='s and/or the pseudo-classical instantiation pattern
+    2. =Animal.prototype= is the reference returned by =Object.getPrototypeOf(tux)= because they are the
+       same thing
+       - i don't know why mcginnis thinks this is worth saying, i guess he's just affirming it w/e
+
+         
+    side note: *.__proto__* is considered legacy, don't use that.
+
+*** determining if a property lives on a prototype
+
+    special cases arise where you want to know whether a property lives on an object instance or the
+    prototype it delegates to.
+
+    we can't use a =for in= loop because it'll return every property on an object instance, including
+    its prototype's:
+    #+begin_src js
+    for(let key in tux) {
+        console.log(`Key: ${key}. Value: ${tux[key]}`);
+    }
+    #+end_src
+
+    as already said, it'll yield /every property/ on the object, including the object's prototype:
+    #+begin_src js
+      Key: name. Value: tux
+      Key: energy. Value: 10
+      Key: eat. Value: function (amount) {
+          console.log(`${this.name} is eating.`)
+          this.energy += amount
+      }
+      Key: sleep. Value: function (length) {
+          console.log(`${this.name} is sleeping.`)
+          this.energy += length
+      }
+      Key: play. Value: function (length) {
+          console.log(`${this.name} is playing.`)
+          this.energy -= length
+      }
+    #+end_src
+
+    this is because =for in= loops iterate over all of the *enumerable properties* available on that
+    object.
+
+    to determine whether a property exists strictly /on an object instance/, use the boolean function =hasOwnProperty()=
+    instead, which takes a property and checks whether the object has it:
+    #+begin_src js
+      for (let key in tux) {
+          if (tux.hasOwnProperty(key)) {
+              console.log(`Key: ${key}. Value: ${tux[key]}`);
+          }
+      }
+    #+end_src
+
+    which will yield the desired results:
+    #+begin_src js
+      Key: name. Value: tux
+      Key: energy. Value: 10
+    #+end_src
+
+*** check if object is an instance of class
+    =instanceOf= /operator/ does the trick:
+    #+begin_src js
+      tux instanceOf Animal // true
+    #+end_src
+
+    it functions by checking for the existence of the =constructor.prototype= in the object's
+    prototype chain. this is true for =tux= because:
+    #+begin_src js
+      Object.getPrototypeOf(tux) === Animal.prototype
+    #+end_src
+
+*** creating new agnostic constructor functions
+
+    how do you ensure a constructor function is always called with =new=? otherwise =this= is never
+    constructor nor returned implicitly. to enforce this, realize that the =this= instance inside the
+    constructor, if correctly called with =new=, will be an =instanceOf= that class. thus, we could do
+    the following to enforce the usage of =new=:
+    #+begin_src js
+      function Animal(name, energy) {
+          if (this instanceOf Animal === false) {
+              throw new Error('did not construct object using new')
+          }
+          /* rest of code */
+      }
+    #+end_src
+
+    better yet (is it really?).... we could just correct the error ourselves:
+    #+begin_src js
+      function Animal(name, energy) {
+          if (this instanceOf Animal === false) {
+              console.warn("failed to call Animal with new. corrected");
+              return new Animal(name, energy)
+          }
+          /* rest of code */
+      }    
+    #+end_src
+
+*** recreating the =Object.create()= method
+    
+    #+begin_src js
+      Object.create = function(objToDelegate) {
+          function Fn(){}
+          Fn.prototype = objToDelegate;
+          return new Fn()
+      }
+    #+end_src
+
+    What is happening above:
+    1. we create a function called =create= on the =Object= class
+    2. inside that function, we define an empty function, =Fn=
+    3. since every function has a prototype property, we assign to =Fn='s prototype the object we're
+       delegating to
+    4. finally, we use =new= to create /a new instance of that object/, which is what our empty =Fn=
+       achieves because its prototype is that of the delegated object
+       - thus, when we create a new object via =Object.create()=, the returned object, being an empty
+         function, everything gets delegated to the passed object type's prototype.
+
+*** arrow functions
+    
+    friendly reminder that arrow functions don't have =this= because they don't introduce their own
+    context. by natural extension, this means they cannot be constructors. trying to do otherwise
+    will return an error.
+
+** lecture 12
+
+*** why modules
+    - reusability
+    - composability
+    - isolation
+    - organization
+
+*** js modules
+    *modules*, generally speaking, are collections of code that together have a specific purpose with
+    clear boundaries on its functionality and integration with other modules
+
+    in js land, each module has three parts:
+    1. imports (aka dependencies) - outside modules needed by the current module to function
+    2. code - the actual code, i.e. logic/functionality, of th module
+    3. exports (aka the interface) - the units of code exposed to the outside world and to be used by
+       other modules
+
+       
+    here's an example taken out of the modules directory of the React Router library:
+    #+begin_src js
+      // imports
+      import React from "react";
+      import { createMemoryHistory } from "history";
+      import Router from "./Router";
+
+      // code
+      class MemoryRouter extends React.Component {
+          history = createMemoryHistory(this.props);
+          render() {
+              return (
+                  <Router
+                      history={this.history}
+                      children={this.props.children}
+                  />;
+              )
+          }
+      }
+
+      // exports
+      export default MemoryRouter;
+    #+end_src
+
+*** js modules from the ground up
+
+    js has a bad and weird history with modules so understanding how they work from the ground up
+    can help with legacy code that still exists out there or something idk
+
+    let's pretend it's the late 2000s. JQuery is the hot shit and people are starting to build
+    enterprise size apps with js.
+
+**** modules by file
+
+     what if we made each file a module?
+     #+begin_src js
+       // users.js
+       var users = ["odb", "rza", "gza"]
+
+       function getUsers() {
+         return users
+       }
+
+       // dom.js
+
+       function addUserToDOM(name) {
+         const node = document.createElement("li")
+         const text = document.createTextNode(name)
+         node.appendChild(text)
+
+         document.getElementById("users")
+           .appendChild(node)
+       }
+
+       document.getElementById("submit")
+         .addEventListener("click", function() {
+           var input = document.getElementById("input")
+           addUserToDOM(input.value)
+
+           input.value = ""
+       })
+
+       var users = window.getUsers()
+       for (var i = 0; i < users.length; i++) {
+         addUserToDOM(users[i])
+       }
+     #+end_src
+
+     and here's how we serve it on our index.html:
+     #+begin_src html
+       <!-- index.html -->
+       <!DOCTYPE html>
+       <html>
+         <head>
+           <title>Users</title>
+         </head>
+
+         <body>
+           <h1>Users</h1>
+           <ul id="users"></ul>
+           <input
+             id="input"
+             type="text"
+             placeholder="New User">
+           </input>
+           <button id="submit">Submit</button>
+
+           <script src="users.js"></script>
+           <script src="dom.js"></script>
+         </body>
+       </html>
+     #+end_src
+
+     does this work? *nope*. nothing about how we've setup our files make them modules. as it stands,
+     only functions can create their own contexts and thus every variable and function in each of
+     the two files is introduced into the global namespace of our webpage. opening up the web
+     console confirms this when you check our =window= object: 
+
+     [[file:assets/Screenshot_20200525_155543.png]]
+
+     =addUsers=, =users=, =getUsers=, and =addUsersToDOM= are all accessible. physical separation of code is
+     the only thing achieved by our current setup.
+
+     what can we do to actually modularize this code? what features, native to vanilla js, enable
+     this sort of encapsulation?
+
+     .... /what if we just wrap it all up in a function?/ let's make a single object, =APP=, that we
+     expose at the global namespace level and put everything else about our app inside of it. We can
+     put everything else in wrapper functions to keep it from polluting our global namespace.
+
+     #+begin_src js
+       // App.js
+       var APP = {}
+
+
+       // users.js
+       function usersWrapper () {
+         var users = ["Tyler", "Sarah", "Dan"]
+
+         function getUsers() {
+           return users
+         }
+
+         APP.getUsers = getUsers
+       }
+
+       usersWrapper()
+
+
+       // dom.js
+
+       function domWrapper() {
+         function addUserToDOM(name) {
+           const node = document.createElement("li")
+           const text = document.createTextNode(name)
+           node.appendChild(text)
+
+           document.getElementById("users")
+             .appendChild(node)
+         }
+
+         document.getElementById("submit")
+           .addEventListener("click", function() {
+             var input = document.getElementById("input")
+             addUserToDOM(input.value)
+
+             input.value = ""
+         })
+
+         var users = APP.getUsers()
+         for (var i = 0; i < users.length; i++) {
+           addUserToDOM(users[i])
+         }
+       }
+
+       domWrapper()
+     #+end_src
+
+     and add the following line before our other script calls in index.html:
+     #+begin_src html
+       <script src="app.js"></script>
+     #+end_src
+
+
+     looking at our =window= object, we now see there's a lot less pollution with only =APP= and our
+     wrapper functions exposed. furthermore, because everything is inside of =APP= and wrapped up,
+     none of the important code is exposed for direct manipulation like =users= was before.
+
+     [[file:assets/Screenshot_20200525_155622.png]]
+
+     is there way to go even further? can we eliminate the wrapper functions?
+
+     note how we define and *then immediately invoke* our wrapper functions upon being loaded by their
+     script tags in index.html. the only reason why they even have names is because we need to
+     invoke them immediately, afterwards becoming useless to the client.
+
+     ideally, we want a way to immediately invoke anonymous functions that setup the infrastructure
+     of our application without polluting the global namespace with useless helpers/wrappers that
+     don't do anything.
+
+     what we want is called *Immediately Invoked Function Expressions*, aka *IIFE*'s
+
+*** Immediately Invoked Function Expressions
+
+
