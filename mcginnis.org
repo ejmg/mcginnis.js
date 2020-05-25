@@ -1435,3 +1435,283 @@
     #+end_src
 
 ** lecture 11
+*** objects
+    *objects* are key/value pairs and are a central structure to js.
+
+    an example of instantiating an object using the standard ={}= and dot notation:
+    #+begin_src js
+      let animal = {};
+      animal.name = "tux";
+      animal.energy = 10;
+
+      animal.eat = function (amount) {
+          console.log(`${this.name} is eating`);
+          this.energy += amount;
+      }
+
+      animal.sleep = function(length) {
+          console.log(`${this.name} is sleeping`);
+          this.energy += length;
+      }
+
+      animal.play = function(length) {
+          console.log(`${this.name} is playing`);
+          this.energy -= length;
+      }
+    #+end_src
+
+*** functional instantiation
+    *Functional Instatiation* is creating a function that acts as a constructor for a type of object.
+    
+    we can encapsulate the logic above into a general constructor for animal objects as so:
+    #+begin_src js
+      function Animal (name, energy) {
+          let animal = {};
+          animal.name = name;
+          animal.energy = energy;
+
+          animal.eat = function (amount) {
+              console.log(`${this.name} is eating`);
+              this.energy += amount;
+          }
+
+          animal.sleep = function(length) {
+              console.log(`${this.name} is sleeping`);
+              this.energy += length;
+          }
+
+          animal.play = function(length) {
+              console.log(`${this.name} is playing`);
+              this.energy -= length;
+          }
+
+          return animal
+      }
+    #+end_src
+    
+    simple enough, but what are some weaknesses of this approach?
+    - each method is dynamic, i.e. is re-created for each call to =Animal()=, when they are generic in
+      nature.
+      + i.e. we are wasting memory and making each =Animal= object larger than necessary.
+
+
+    solution?
+
+*** Functional Instantiation with Shared Methods
+
+    *Functional Instatiation with Shared Methods* is when methods shared by different objects are
+    defined on a single object type that the sharing objects reference for their own instantiation.
+
+    Taking =Animal= as our example:
+    #+begin_src js
+      function animalMethods = {
+          eat = function (amount) {
+              console.log(`${this.name} is eating`);
+              this.energy += amount;
+          }
+
+          sleep = function(length) {
+              console.log(`${this.name} is sleeping`);
+              this.energy += length;
+          }
+
+          play = function(length) {
+              console.log(`${this.name} is playing`);
+              this.energy -= length;
+          }
+      }
+
+      function Animal (name, energy) {
+          let animal = {};
+          animal.name = name;
+          animal.energy = energy;
+
+          // now attach the method reference to our new animal
+          animal.eat = animalMethods.eat;
+          animal.sleep = animalMethods.sleep;
+          animal.play = animalMethods.play;
+
+          return animal
+      }
+    #+end_src
+
+*** Object.create
+    Can further implementation via *Object.create*.
+
+    =Object.create= allows you to create an object which will delegate to another object on failed
+    lookups, i.e. whenever a property that does not exist is looked up against an object, the
+    delegated object will then be checked for that property.
+
+    example:
+    #+begin_src js
+      const grandparent = {
+          name: 'cato the elder',
+          age: 60,
+          heritage: 'patrician'
+      }
+
+      const grandchild = Object.create(grandparent);
+      grandchild.name = 'cato the younger';
+      grandchild.age = 20;
+
+      console.log(grandchild.name);
+      console.log(grandchild.heritage);
+    #+end_src
+
+*** Functional Instatiation with Shared Methods and Object.create
+
+    why does =Object.create= matter here? we can now replace all those spurious field calls with a
+    single call to =Object.create= to associate an animal with the shared methods of =animalMethods=
+
+    #+begin_src js
+      const animalMethods = {
+        eat(amount) {
+          console.log(`${this.name} is eating.`)
+          this.energy += amount
+        },
+        sleep(length) {
+          console.log(`${this.name} is sleeping.`)
+          this.energy += length
+        },
+        play(length) {
+          console.log(`${this.name} is playing.`)
+          this.energy -= length
+        }
+      }
+
+      function Animal (name, energy) {
+        // see ma, no hands
+        let animal = Object.create(animalMethods)
+        animal.name = name
+        animal.energy = energy
+
+        return animal
+      }
+    #+end_src
+
+    nice. /but doesn't it still feel hacky to have a whole separate function type separate from
+    =Animals= themselves?/ How can this be avoided? The answer lies in *prototypes*.
+
+    every function in js has a *prototype property* that references an object. the solution for
+    =Animal='s then is to put the shared methods, instead of inside a separate function, on the
+    prototype of =Animal= itself. Then we can delegate to =Animal.prototype= instead of a separate
+    function object. This pattern is called...
+
+*** Prototypal Instantiation
+    
+    Let's use *prototypal instantiation* on =Animal= to implement its shared functions:
+    #+begin_src js
+      function Animal (name, energy) {
+          let animal = Object.create(Animal.prototype)
+          animal.name = name
+          animal.energy = energy
+
+          return animal
+      }
+
+      Animal.prototype.eat = function (amount) {
+          console.log(`${this.name} is eating.`)
+          this.energy += amount
+      }
+
+      Animal.prototype.sleep = function (length) {
+          console.log(`${this.name} is sleeping.`)
+          this.energy += length
+      }
+
+      Animal.prototype.play = function (length) {
+          console.log(`${this.name} is playing.`)
+          this.energy -= length
+      }
+    #+end_src
+
+    every instance of the function =Animal= will now have access to these methods. nice.
+
+*** psuedo-classical instantiation
+
+    why is javascript so lame? why does it not already support the features we created using
+    prototypes and shared methods? actually, it does via the =new= keyword. using =new=, we can define a
+    constructor function that elides the call to =Object.create= its =return= statement because it does
+    this implicitly using =this= as a reference to the new object instantiated.
+
+    in other words, if we used =new= with =Animal=, this is all that would be needed:
+    #+begin_src js
+      function Animal (name, energy) {
+          // elided bc happens implicitly
+          // const this = Object.create(Animal.prototype)
+
+          this.name = name
+          this.energy = energy
+          // same again here
+          // return this
+      }
+    #+end_src
+
+    thus, this will work:
+    #+begin_src js
+      function Animal (name, energy) {
+          this.name = name
+          this.energy = energy
+      }
+
+      Animal.prototype.eat = function (amount) {
+          console.log(`${this.name} is eating.`)
+          this.energy += amount
+      }
+
+      Animal.prototype.sleep = function (length) {
+          console.log(`${this.name} is sleeping.`)
+          this.energy += length
+      }
+
+      Animal.prototype.play = function (length) {
+          console.log(`${this.name} is playing.`)
+          this.energy -= length
+      }
+
+      const tux = new Animal('tux', 10);
+    #+end_src
+
+
+    if you were to call =Animal= without =new=, the =this= object is never created nor returned.
+
+    #+begin_src js
+      const vlad = Animal('vlad', 5);
+      console.log(vlad); // undefined
+    #+end_src
+
+    the pattern for using =new= and attaching shared methods to the prototype of a function is called
+    *pseudo-classical instantiation*
+
+*** classes
+
+    it's kinda funny imo how it took till 2015 for javascript to just make =class= a thing, but
+    whatever. anyway, yeah, ES6 implemented =class= as a feature, but *=class= is just syntactic sugar
+    for the psuedo-classical instantiation pattern* we learned about above. it's nothing special in
+    the end.
+
+    to use =class= syntax for =Animal=:
+    #+begin_src js
+      class Animal {
+          constructor(name, energy) {
+              this.name = name
+              this.energy = energy
+          }
+          eat(amount) {
+              console.log(`${this.name} is eating.`)
+              this.energy += amount
+          }
+          sleep(length) {
+              console.log(`${this.name} is sleeping.`)
+              this.energy += length
+          }
+          play(length) {
+              console.log(`${this.name} is playing.`)
+              this.energy -= length
+          }
+      }
+
+      const tux = new Animal('tux', 10);
+    #+end_src
+
+*** array methods
