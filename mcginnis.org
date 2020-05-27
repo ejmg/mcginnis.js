@@ -60,6 +60,10 @@
     - [[#module-bundlers][Module Bundlers]]
     - [[#es-modules][ES Modules]]
     - [[#tree-shaking][tree shaking]]
+  - [[#lecture-13][lecture 13]]
+    - [[#class-fields][Class Fields]]
+    - [[#downsides-of-class-fields][downsides of class fields]]
+    - [[#private-fields][private fields]]
 
 * modern js
 ** lecture 1
@@ -2602,4 +2606,219 @@
 
     the benefit to static modules is that it allows for static analysis and optimization of imports
     via *tree shaking*, which is just dropping dead/unused code from your import bundle.
+
+** lecture 13
+*** Class Fields
+   as of now, field variables of a class in ES6 are declared in the constructor:
+   #+begin_src js
+     constructor() {
+         this.foo = 0
+         this.bar = "bar"
+         /* etc */
+     }
+   #+end_src
+
+   however, there is a stage 3 proposal in TC-39 for *declaring class fields* (properties) directly
+   onto a class as opposed to needing their declaration and instatiation within the constructor:
+   #+begin_src js
+     class Foo extends Bar {
+         foo = 0
+         bar = "bar"
+         someClassMethod() {
+             // whatever
+         }
+         /* rest of class */
+     }
+   #+end_src
+
+   this is nice and all, but really benefits react code. here's a typical react component:
+   #+begin_src js
+     class PlayerInput extends Component {
+       constructor(props) {
+         super(props)
+         this.state = {
+           username: ''
+         }
+
+         this.handleChange = this.handleChange.bind(this)
+       }
+       handleChange(event) {
+         this.setState({
+           username: event.target.value
+         })
+       }
+       render() {
+         ...
+       }
+     }
+
+     PlayerInput.propTypes = {
+       id: PropTypes.string.isRequired,
+       label: PropTypes.string.isRequired,
+       onSubmit: PropTypes.func.isRequired,
+     }
+
+     PlayerInput.defaultProps = {
+       label: 'Username',
+     }
+   #+end_src
+
+   now here's the same component using the class fields declaration, starting with moving =state= out:
+   #+begin_src js
+     class PlayerInput extends Component {
+       state = {
+         username: ''
+       }
+       constructor(props) {
+         super(props)
+
+         this.handleChange = this.handleChange.bind(this)
+       }
+       handleChange(event) {
+         this.setState({
+           username: event.target.value
+         })
+       }
+       render() {
+           /* snip */
+       }
+     }
+
+     PlayerInput.propTypes = {
+       id: PropTypes.string.isRequired,
+       label: PropTypes.string.isRequired,
+       onSubmit: PropTypes.func.isRequired,
+     }
+
+     PlayerInput.defaultProps = {
+       label: 'Username',
+     }
+   #+end_src
+
+   what is annoying is that we still need to add the properties =propTypes= and =defaultProps= after the
+   declaration of =PlayerInput= because of the limits on =static= usage, i.e. only methods and not
+   values can be made static.
+
+   luckily, the Class Fields proposal includes this functionality!
+   #+begin_src js
+     class PlayerInput extends Component {
+       static propTypes = {
+         id: PropTypes.string.isRequired,
+         label: PropTypes.string.isRequired,
+         onSubmit: PropTypes.func.isRequired,
+       }
+       static defaultProps = {
+         label: 'Username'
+       }
+       state = {
+         username: ''
+       }
+       constructor(props) {
+         super(props)
+
+         this.handleChange = this.handleChange.bind(this)
+       }
+       handleChange(event) {
+         this.setState({
+           username: event.target.value
+         })
+       }
+       render() {
+         /* ... */
+       }
+     }
+   #+end_src
+
+   awesome, now all we have left is an ugly constructor method that does nearly nothing. all it does
+   is call =super()= and attach =this= to the instance object to ensure proper context for our call to =handleChange=.
+
+   ... what if we just use an arrow function for =handleChange= then?
+
+   #+begin_src js
+     class PlayerInput extends Component {
+       static propTypes = {
+         id: PropTypes.string.isRequired,
+         label: PropTypes.string.isRequired,
+         onSubmit: PropTypes.func.isRequired,
+       }
+       static defaultProps = {
+         label: 'Username'
+       }
+       state = {
+         username: ''
+       }
+       handleChange = (event) => {
+         this.setState({
+           username: event.target.value
+         })
+       }
+       render() {
+         /* ... */
+       }
+     }
+   #+end_src
+
+*** downsides of class fields
+    
+    recall that =class= is just syntactic sugar over the psuedo-classical pattern of attaching shared
+    methods to an object type's prototype (it's constructing function's prototype). this is
+    performant because they are not dynamic, i.e. each instance does not re-create the function
+    method. the issue with class fields is, by definition, they are defined on the class
+    instantiation. there is overhead with this and so, maybe for larger and commonly used components
+    of a project, can be a significant performance cost.
+
+    for example, if we used an arrow function to make =sleep= a class field in =Animal=:
+    #+begin_src js
+      class Animal {
+        eat() {}
+        sleep = () => {}
+      }
+
+      // Is equivalent to
+
+      function Animal () {
+        this.sleep = function () {}
+      }
+
+      Animal.prototype.eat = function () {}
+    #+end_src
+
+*** private fields
+
+    historically js had no notion of private fields because there is no real mechanism to prevent
+    consuming code to access it, so an underscore that prefixed a variable name was a signal to
+    "please not use this variable and treat it as private". again, not enforceable though.
+    #+begin_src js
+      class Car {
+        _milesDriven = 0
+        drive(distance) {
+          this._milesDriven += distance
+        }
+        getMilesDriven() {
+          return this._milesDriven
+        }
+      }
+
+      const tesla = new Car()
+      tesla.drive(10)
+      console.log(tesla._milesDriven) // returns 10, completely valid despite being "private"
+    #+end_src
+
+    The Class Field proposal now also formalizes actual *private fields* via the =#= symbol:
+    #+begin_src js
+      class Car {
+        #milesDriven = 0
+        drive(distance) {
+          #milesDriven += distance
+        }
+        getMilesDriven() {
+          return #milesDriven
+        }
+      }
+
+      const tesla = new Car()
+      tesla.drive(10)
+      tesla.getMilesDriven() // 10
+      tesla.#milesDriven // Invalid
+    #+end_src
 
