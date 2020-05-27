@@ -64,6 +64,8 @@
     - [[#class-fields][Class Fields]]
     - [[#downsides-of-class-fields][downsides of class fields]]
     - [[#private-fields][private fields]]
+- [[#react][react]]
+  - [[#why-react][why react]]
 
 * modern js
 ** lecture 1
@@ -2822,3 +2824,36 @@
       tesla.#milesDriven // Invalid
     #+end_src
 
+* react
+** why react
+   *react* is a library for building user interfaces. there is a large ecosystem, but that's
+   ultimately what react is about.
+
+   benefits of react:
+   - composition
+     + we compose functions all the time for backend logic, but what if we made UI also compositional?
+
+       #+begin_src jsx
+         function profilePic(props) {
+             return (
+                 <img src={'https://photo.fb.com/' + props.username}/>
+             )
+         }
+
+         function profileLink(props) {
+             return (
+                 <a href={'https://fb.com/' + props.username}>{props.username}</a>
+             )
+         }
+
+         function avatar(props) {
+             return (
+                 <div>
+                     <profilePic username={props.username} />
+                     <profileLink username={props.username} />
+                 </div>
+             )
+         }
+
+         <avatar username='ejmg'>
+       #+end_src
