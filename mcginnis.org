@@ -54,7 +54,12 @@
     - [[#why-modules][why modules]]
     - [[#js-modules][js modules]]
     - [[#js-modules-from-the-ground-up][js modules from the ground up]]
-    - [[#immediately-invoked-function-expressions][Immediately Invoked Function Expressions]]
+    - [[#immediately-invoked-function-expressions-iife][Immediately Invoked Function Expressions (IIFE)]]
+    - [[#module-exports][module exports]]
+    - [[#defining-our-module-api][defining our module api]]
+    - [[#module-bundlers][Module Bundlers]]
+    - [[#es-modules][ES Modules]]
+    - [[#tree-shaking][tree shaking]]
 
 * modern js
 ** lecture 1
@@ -2065,7 +2070,7 @@
 
        // users.js
        function usersWrapper () {
-         var users = ["Tyler", "Sarah", "Dan"]
+         var users = ["odb", "rza", "gza"]
 
          function getUsers() {
            return users
@@ -2130,6 +2135,471 @@
 
      what we want is called *Immediately Invoked Function Expressions*, aka *IIFE*'s
 
-*** Immediately Invoked Function Expressions
+*** Immediately Invoked Function Expressions (IIFE)
 
+    An *Immediately Invoked Function Expression* is an anonymous js function wrapped in parentheses
+    that is immediately invoked upon evaluation by adding a trailing =()=:
+    #+begin_src js
+      (function () {
+          console.log('look 'ma no hands)
+      })()
+    #+end_src
+
+    note, the trailing =()= are necessary to invoke the function as is necessary for any js function
+    to be invoked, e.g. =.toString()= vs =.toString=. evaluating only the expression wrapped in =()=
+    results in nothing happening.
+
+    let's apply our knowledge of IIEF's to our example application:
+    #+begin_src js
+      // App.js
+      var APP = {}
+
+      // users.js
+      (function () {
+          var users = ["odb", "rza", "gza"]
+
+          function getUsers() {
+              return users
+          }
+
+          APP.getUsers = getUsers
+      })()
+
+      // dom.js
+
+      (function () {
+          function addUserToDOM(name) {
+              const node = document.createElement("li")
+              const text = document.createTextNode(name)
+              node.appendChild(text)
+
+              document.getElementById("users")
+                  .appendChild(node)
+          }
+
+          document.getElementById("submit")
+              .addEventListener("click", function() {
+                  var input = document.getElementById("input")
+                  addUserToDOM(input.value)
+
+                  input.value = ""
+              })
+
+          var users = APP.getUsers()
+          for (var i = 0; i < users.length; i++) {
+              addUserToDOM(users[i])
+          }
+      })()
+    #+end_src
+
+    our index.html remains untouched. 
+
+    now when we eval =window= in our developer console, we get:
+    [[file:assets/Screenshot_20200525_165228.png]]
+
+    /perfecto/
+
+    this pattern is called the *IIFE Module Pattern*
+
+**** benefits of the IIFE Module Pattern
+     avoid dumping everything into the global namespace
+     - avoid collisions
+     - keep code private
+
+**** cons of IIFE Module Pattern
+     - have one item in global namespace, =APP=
+       + if anything else tries to use this name, trouble abounds
+     - order of =<script>= tags matters a lot, problems will occur otherwise
+
+*** module exports
+    *each file is (nominally) its own module*, we just need to make it work by defining *explicit
+    imports* and *explicit exports*.
+
+    our module standard becomes:
+    1. file based
+    2. explicit imports
+    3. explicit exports
+
+*** defining our module api
+
+    any information regarding the module can go on the *module* object so that anything we want to
+    export we simply stick on =module.exports=:
+
+    #+begin_src js
+      var users = ["odb", "rza", "gza"]
+
+      function getUsers() {
+          return users
+      }
+
+      module.exports.getUsers = getUsers
+    #+end_src
+
+    equivalently:
+    #+begin_src js
+      var users = ["odb", "rza", "gza"]
+
+      function getUsers() {
+          return users
+      }
+
+      module.exports = {
+          getUsers: getUsers
+      }
+    #+end_src
+
+    we can make it even more condensed, and arbitrarily add as many exports as necessary:
+    #+begin_src js
+      // users.js
+      var users = ["odb", "rza", "gza"]
+
+      module.exports = {
+          getUsers: function () {
+              return users
+          },
+          sortUsers: function () {
+              return users.sort()
+          },
+          // and so on
+      }
+    #+end_src
+
+    now we need to resolve our import API. for simplicity, assume we have a function =require()= that
+    takes a string path as its first argument and will return whatever is being exported from that
+    path.
+
+    to import our =users.js= file, we would do something like:
+    #+begin_src js
+      var users = require('./users')
+
+      users.getUsers() // ["odb", "rza", "gza"]
+    #+end_src
+
+    we now have all the benefits of IIFE without any of the weird stuff. furthermore, this is of
+    course a real standard, *CommonJS*
+
+    #+begin_quote
+    The CommonJS group defined a module format to solve JavaScript scope issues by making sure each
+    module is executed in its own namespace. This is achieved by forcing modules to explicitly
+    export those variables it wants to expose to the “universe”, and also by defining those other
+    modules required to properly work.
+
+    - Webpack docs
+    #+end_quote
+
+    this is more or less what node.js does, though it partially deviates from the spec. furthermore,
+    browsers don't actually support =CommonJS= because *of its synchronous loading* of modules. Async is
+    king in browser land.
+
+    thus the two downsides of =CommonJS= are:
+    1. browsers don't know it
+    2. even if they did, it would be a bad UX because of synchronous loading.
+
+*** Module Bundlers
+
+    *javascript bundlers* examine your codebase, look at all the imports and exports, then
+    intelligently bundles all of your modules together into a single file that the browser can
+    understand. finally, instead of worrying about a shitton of =<script>= tags and their ordering,
+    you just include a single =bundle.js= file to load.
+
+    the process looks like:
+    #+begin_quote
+    app.js ---> |         |
+    users.js -> | Bundler | -> bundle.js
+    dom.js ---> |         |
+    #+end_quote
+
+    where all your files get inputted into the Bundler, and the Bundler gives you a functional
+    =bundle.js= file to use and that the browser will understand.
+
+    how do Bundlers work? *good question*, Tyler McGinnis doesn't understand them fully
+    neither. However, here's what our code (=users.js= and =dom.js=) would look like went put through a
+    basic webpack config:
+    #+begin_src js
+      (function(modules) { // webpackBootstrap
+        // The module cache
+        var installedModules = {};
+        // The require function
+        function __webpack_require__(moduleId) {
+          // Check if module is in cache
+          if(installedModules[moduleId]) {
+            return installedModules[moduleId].exports;
+          }
+          // Create a new module (and put it into the cache)
+          var module = installedModules[moduleId] = {
+            i: moduleId,
+            l: false,
+            exports: {}
+          };
+          // Execute the module function
+          modules[moduleId].call(
+            module.exports,
+            module,
+            module.exports,
+            __webpack_require__
+          );
+          // Flag the module as loaded
+          module.l = true;
+          // Return the exports of the module
+          return module.exports;
+        }
+        // expose the modules object (__webpack_modules__)
+        __webpack_require__.m = modules;
+        // expose the module cache
+        __webpack_require__.c = installedModules;
+        // define getter function for harmony exports
+        __webpack_require__.d = function(exports, name, getter) {
+          if(!__webpack_require__.o(exports, name)) {
+            Object.defineProperty(
+              exports,
+              name,
+              { enumerable: true, get: getter }
+            );
+          }
+        };
+        // define __esModule on exports
+        __webpack_require__.r = function(exports) {
+          if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+            Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+          }
+          Object.defineProperty(exports, '__esModule', { value: true });
+        };
+        // create a fake namespace object
+        // mode & 1: value is a module id, require it
+        // mode & 2: merge all properties of value into the ns
+        // mode & 4: return value when already ns object
+        // mode & 8|1: behave like require
+        __webpack_require__.t = function(value, mode) {
+          if(mode & 1) value = __webpack_require__(value);
+          if(mode & 8) return value;
+          if((mode & 4) && typeof value === 'object' && value && value.__esModule) return value;
+          var ns = Object.create(null);
+          __webpack_require__.r(ns);
+          Object.defineProperty(ns, 'default', { enumerable: true, value: value });
+          if(mode & 2 && typeof value != 'string')
+            for(var key in value)
+              __webpack_require__.d(ns, key, function(key) {
+                return value[key];
+              }.bind(null, key));
+          return ns;
+        };
+        // getDefaultExport function for compatibility with non-harmony modules
+        __webpack_require__.n = function(module) {
+          var getter = module && module.__esModule ?
+            function getDefault() { return module['default']; } :
+            function getModuleExports() { return module; };
+          __webpack_require__.d(getter, 'a', getter);
+          return getter;
+        };
+        // Object.prototype.hasOwnProperty.call
+        __webpack_require__.o = function(object, property) {
+            return Object.prototype.hasOwnProperty.call(object, property);
+        };
+        // __webpack_public_path__
+        __webpack_require__.p = "";
+        // Load entry module and return exports
+        return __webpack_require__(__webpack_require__.s = "./dom.js");
+      })
+      /************************************************************************/
+      ({
+
+      /***/ "./dom.js":
+      /*!****************!*\
+        !*** ./dom.js ***!
+        \****************/
+      /*! no static exports found */
+      /***/ (function(module, exports, __webpack_require__) {
+
+      eval(`
+        var getUsers = __webpack_require__(/*! ./users */ \"./users.js\").getUsers\n\n
+        function addUserToDOM(name) {\n
+          const node = document.createElement(\"li\")\n
+          const text = document.createTextNode(name)\n
+          node.appendChild(text)\n\n
+          document.getElementById(\"users\")\n
+            .appendChild(node)\n}\n\n
+          document.getElementById(\"submit\")\n
+            .addEventListener(\"click\", function() {\n
+              var input = document.getElementById(\"input\")\n
+              addUserToDOM(input.value)\n\n
+              input.value = \"\"\n})\n\n
+              var users = getUsers()\n
+              for (var i = 0; i < users.length; i++) {\n
+                addUserToDOM(users[i])\n
+              }\n\n\n//# sourceURL=webpack:///./dom.js?`
+      );}),
+
+      /***/ "./users.js":
+      /*!******************!*\
+        !*** ./users.js ***!
+        \******************/
+      /*! no static exports found */
+      /***/ (function(module, exports) {
+
+      eval(`
+        var users = [\"Tyler\", \"Sarah\", \"Dan\"]\n\n
+        function getUsers() {\n
+          return users\n}\n\nmodule.exports = {\n
+            getUsers: getUsers\n
+          }\n\n//# sourceURL=webpack:///./users.js?`);})
+      });
+    #+end_src
+    To get a better understanding, read the comments in the output above.
+
+    The biggest takeaway for the above snippet, aside from integrating all of our code together into
+    one output, is that the entire snippet is *one big IIFE*.
+
+*** ES Modules
+
+    So TC-39 finally resolved to designing a builtin JS module system, and it improves on our IIFE
+    and CommonJS style system by:
+    - making it async by default
+    - adding explicitly new keywords, =import= and =export=, instead of a helper function =require= and
+      respecting norms around the usage of =module= identifiers
+
+      
+    take the following example =util.js= file:
+    #+begin_src js
+      // utils.js
+
+      // Not exported
+      function once(fn, context) {
+        var result
+        return function() {
+          if(fn) {
+            result = fn.apply(context || this, arguments)
+            fn = null
+          }
+          return result
+        }
+      }
+
+      // Exported
+      export function first (arr) {
+        return arr[0]
+      }
+
+      // Exported
+      export function last (arr) {
+        return arr[arr.length - 1]
+      }
+    #+end_src
+
+    every exported function is prepended with the =export= keyword.
+
+    there are a few options for *importing* es modules.
+
+    1. importing everything
+       #+begin_src js
+         import * as utils from './utils'
+
+         utils.first([1,2,3]) // 1
+         utils.last([1,2,3]) // 3
+       #+end_src
+
+    2. *named imports*
+       #+begin_src js
+         import { first } from './utils'
+
+         first([1,2,3]) // 1
+       #+end_src
+
+    3. (if available) *default imports*
+       with es modules, you can define a *default* export.
+       #+begin_src js
+         // leftpad.js
+
+         export default function leftpad (str, len, ch) {
+           var pad = '';
+           while (true) {
+             if (len & 1) pad += ch;
+             len >>= 1;
+             else break;
+           }
+           return pad + str;
+         }
+
+         // app.js
+         import leftpad from './leftpad'
+       #+end_src
+
+       these =default= imports can be mixed with normal exports as well:
+       #+begin_src js
+         import leftpad, { first, last } from './utils'
+       #+end_src
+
+
+    returning to our original example, we can leverage ES modules as so:
+    #+begin_src js
+      // users.js
+
+      var users = ["odb", "rza", "gza"]
+
+      export default function getUsers() {
+        return users
+      }
+
+      // dom.js
+
+      import getUsers from './users.js'
+
+      function addUserToDOM(name) {
+        const node = document.createElement("li")
+        const text = document.createTextNode(name)
+        node.appendChild(text)
+
+        document.getElementById("users")
+          .appendChild(node)
+      }
+
+      document.getElementById("submit")
+        .addEventListener("click", function() {
+          var input = document.getElementById("input")
+          addUserToDOM(input.value)
+
+          input.value = ""
+      })
+
+      var users = getUsers()
+      for (var i = 0; i < users.length; i++) {
+        addUserToDOM(users[i])
+      }
+    #+end_src
+
+    *ES modules are native to js and thus browsers support them without a bundler*. unlike the plain
+     IIFE pattern, we don't need to worry about ordering and sourcing several JS files in our
+     html. Furthermore, unlike CommonJS, we don't need a bundler to make the browser understand our
+     modules. /Furthermore/, all we need to do is source the major/primary js module and add
+     ~type='module'~ attribute to the script tag:
+     #+begin_src js
+       <!DOCTYPE html>
+       <html>
+         <head>
+           <title>Users</title>
+         </head>
+
+         <body>
+           <h1>Users</h1>
+           <ul id="users">
+           </ul>
+           <input id="input" type="text" placeholder="New User"></input>
+           <button id="submit">Submit</button>
+
+           <script type=module src='dom.js'></script>  </body>
+       </html>     
+     #+end_src
+
+*** tree shaking
+    another aspect of ES modules is that they are *static* and are *required to be declared at the top
+    of the module*. With CommonJS style modules, you can =require= a module anywhere and can therefore
+    even conditionally import module code:
+    #+begin_src js
+      if (pastTheFold === true) {
+          require('./foo')
+      }
+    #+end_src
+    the same is invalid for ES modules (though there is a stage 3 proposal for a similar feature).
+
+    the benefit to static modules is that it allows for static analysis and optimization of imports
+    via *tree shaking*, which is just dropping dead/unused code from your import bundle.
 
