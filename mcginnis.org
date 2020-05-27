@@ -65,7 +65,10 @@
     - [[#downsides-of-class-fields][downsides of class fields]]
     - [[#private-fields][private fields]]
 - [[#react][react]]
-  - [[#why-react][why react]]
+  - [[#overview][overview]]
+    - [[#why-react][why react]]
+    - [[#the-react-ecosystem][the react ecosystem]]
+  - [[#road-to-hello-world][road to hello world]]
 
 * modern js
 ** lecture 1
@@ -2825,35 +2828,310 @@
     #+end_src
 
 * react
-** why react
-   *react* is a library for building user interfaces. there is a large ecosystem, but that's
-   ultimately what react is about.
+  :PROPERTIES:
+  :header-args: :mkdirp yes
+  :END:
+** overview
+*** why react
+    *react* is a library for building user interfaces. there is a large ecosystem, but that's
+    ultimately what react is about.
 
-   benefits of react:
-   - composition
-     + we compose functions all the time for backend logic, but what if we made UI also compositional?
+    benefits of react:
+    - *Composition*
+      + we compose functions all the time for backend logic, but what if we made UI also compositional?
 
-       #+begin_src jsx
-         function profilePic(props) {
-             return (
-                 <img src={'https://photo.fb.com/' + props.username}/>
-             )
-         }
+        #+begin_src jsx :tangle "react_ex/ex_prop.js"
+          function profilePic(props) {
+              return (
+                  <img src={'https://photo.fb.com/' + props.username}/>
+              )
+          }
 
-         function profileLink(props) {
-             return (
-                 <a href={'https://fb.com/' + props.username}>{props.username}</a>
-             )
-         }
+          function profileLink(props) {
+              return (
+                  <a href={'https://fb.com/' + props.username}>{props.username}</a>
+              )
+          }
 
-         function avatar(props) {
-             return (
+          function avatar(props) {
+              return (
+                  <div>
+                      <profilePic username={props.username} />
+                      <profileLink username={props.username} />
+                  </div>
+              )
+          }
+
+          <avatar username='ejmg'>
+        #+end_src
+
+      + composition allows you to leverage 3rd party components trivially
+
+    - *Unidirectional Dataflow*
+
+      + predictable and robust applications requires knowing *when* and *how* state changes
+
+      + old school JQuery would result in event listeners that were complex, intermingled, and shared
+        mutable state (the dom itself)
+        [[file:assets/jquery.png]]
+
+      + with react, the source of truth (state) *lives in the components*. in components, you decide
+        when/how state should change along with how that effects the UI
+        [[file:assets/react-flow.png]]
+
+      + UI becomes a function of state
+
+    - *Declarative UI*
+
+      + in addition to unidirectional dataflow is *how* the DOM gets updated.
+
+        * with JQuery, it's imperative code:
+          #+begin_src js
+            $('btn').click(() => {
+              $(this).toggleClass('highlight')
+              $(this).text() === 'Add Highlight'
+                ? $(this).text('Remove Highlight')
+                : $(this).text('Add Highlight')
+            })
+          #+end_src
+
+        * with react, the abstraction of imperative programming is taken away. instead, you *describe
+          what* the UI should look like, *not how* it gets updated. react does the hardwork of figuring
+          out those changes /for you/.
+
+      + with react, you now only need to worry about:
+        1. how the state in a component changes
+
+        2. what the UI looks like based off of the state
+
+    - *"it's just javascript"*
+
+      + controversial, but really, it's just js. other frameworks have directives or infra to
+        transform code, when react is just js.
+
+        * Vue has a special API for for-loops called =v=for= directive
+          #+begin_src html
+            <ul id="friends">
+              <li v-for="friend in friends">
+                {{ friend }}
+              </li>
+            </ul>
+          #+end_src
+
+        * with react... you just use =.map=:
+          #+begin_src html
+            <ul>
+              {friends.map((name) => (
+                <li>
+                  {name}
+                </li>
+              ))}
+            </ul>
+          #+end_src
+*** the react ecosystem
+
+    react itself isn't all that confusing, but getting react working within the front-end system,
+    especially for the first time, is. you need NPM, Babel, and Webpack altogether working to get
+    react loaded as expected. To get routing, you need to bring in React Router, and what about
+    Redux? etc.
+   
+**** react itself
+
+     react is all about UI, so why is it so complicated to get running? well, you could get it
+     running with only an =index.html= page:
+     #+begin_src html :tangle "react_ex/index.html"
+       <!DOCTYPE html>
+       <html>
+       <head>
+         <title>React</title>
+         <script crossorigin src="https://unpkg.com/react@16.7/umd/react.development.js"></script>
+         <script crossorigin src="https://unpkg.com/react-dom@16.7/umd/react-dom.development.js"></script>
+         <script src='https://unpkg.com/babel-standalone@6/babel.min.js'></script>
+       </head>
+       <body>
+         <div id='app'></div>
+         <script type='text/babel'>
+           function Hello ({ name }) {
+             return <h1>Hello, {name}</h1>
+           }
+
+           ReactDOM.render(
+             <Hello name='ghostface killah' />,
+             document.getElementById('app')
+           )
+
+         </script>
+       </body>
+       </html>
+     #+end_src
+
+     is this the best way to do it? no. is it possible? yes.
+
+***** why is setting up react so complicated?
+
+      for a production ready build, the setup is legitimately more complicated. why? let's
+      investigate with code. here's a component:
+      #+begin_src js :tangle "react_ex/ecosystem/component.js"
+        import React from 'react'
+
+        export default function User ({ name, username }) {
+          const avatarURL = `https://github.com/${username}.png?size=200`
+
+          return (
+            <div>
+              <h1>{name}</h1>
+              <img 
+                alt={`Avatar for ${username}`}
+                src={avatarURL}
+              />
+            </div>
+          )
+        }
+      #+end_src
+
+      if we gave this component as is to a browser, it would throw an error because, well, it would
+      think we gave it malformed js. it looks like we have html in our js; alternatively, it would
+      possibly give a syntax error on import/export syntax. both of these errors are a result of how
+      react works and why the build/deployment of react is more complicated.
+
+***** babel and react
+     
+      babel is a transpiler for modern javascript into equivalent web browser compatible
+      javascript. the first issue with the component above, the embedded html, is a result of *JSX*
+      (TBD). JSX is react's way of describing of describing UI inside of components.
+
+
+      thus, we need babel in our toolchain by necessity. in order to run jsx in the browser, we need
+      to transpile it via babel (or an equiv tool) into browser compatible js.
+
+***** webpack
+
+      webpack is a popular js bundler tool that takes your javascript and packages it such that the
+      browser will understand it while maintaining functionality and maintaining the program
+      namespace. furthermore, it *removes* the import/export statements that browsers don't understand
+      yet.
+
+***** routing
+
+      *react does not come with its own router*. at the end of the day, react is a UI library; however,
+      there are router libraries for react, most notably/popular being React Router (TBD). tl;dr,
+      the below example shows how react router's job is to *render specific components based on the
+      current URL path of the user*:
+      #+begin_src js :tangle "react_ex/ecosystem/router.js"
+        <Router>
+          <div>
+            <ul>
+              <li><Link to="/">Home</Link></li>
+              <li><Link to="/about">About</Link></li>
+              <li><Link to="/topics">Topics</Link></li>
+            </ul>
+
+            <Route exact path="/" component={Home}/>
+            <Route path="/about" component={About}/>
+            <Route path="/topics" component={Topics}/>
+          </div>
+        </Router>
+      #+end_src
+
+      when a user navigates to the home page at ~/~, react router will render the =Home= component,
+      etc. what is important/nice about react router is that its entire API consists of just
+      *components*.
+
+***** styling
+
+      /styling is the most controversial part of the react ecosystem (lol)/. There are two schools of
+      thought:
+      1. traditional
+         - style your react apps like you would any other web app, e.g. =index.css= for the index or
+           =user_profile.css= for user profile stylings etc
+           + you have classes, cascading, and other css native features
+           + maybe even css pre-processors like SASS or pureCSS
+         - standard pro/cons of css apply here
+      2. untraditional
+         - fully embraces react's component model by including styling alongside the logic/ui in components
+           + *"CSS in JS"*
+           + you avoid all the typical properties of CSS, e.g. no more cascading or global namespace
+           + all your styles for a component live in the component just like the UI and static logic
+         - example:
+           #+begin_src js
+             // styles become objects to create for specific components
+             const styles = {
+               header: {
+                 fontWeight: 400,
+                 fontSize: 55,
+                 color: '#a41c1c'
+               },
+               avatar: {
+                 width: 50,
+                 height: 50,
+                 borderRadius: 25
+               }
+             }
+
+             export default function User ({ name, username }) {
+               const avatarURL = `https://github.com/${username}.png?size=200`
+
+               return (
                  <div>
-                     <profilePic username={props.username} />
-                     <profileLink username={props.username} />
+                   <h1 style={styles.header}>{name}</h1>
+                   <img
+                     style={styles.avatar}
+                     alt={`Avatar for ${username}`}
+                     src={avatarURL}
+                   />
                  </div>
-             )
-         }
+               )
+             }
+           #+end_src
+         - a popular library for this approach is the Styled Components library, which allows the
+           creation of style components:
+           #+begin_src js
+             import React from 'react'
+             import styled from 'styled-components'
 
-         <avatar username='ejmg'>
-       #+end_src
+             const Header = styled.h1`
+               font-weight: 400;
+               font-size: 55;
+               color: #a41c1c;
+             `
+
+             const Avatar = styled.img`
+               width: 50px;
+               height: 50px;
+               border-radius: 25px;
+             `
+
+             export default function User ({ name, username }) {
+               const avatarURL = `https://github.com/${username}.png?size=200`
+
+               return (
+                 <div>
+                   // note how the component tag here is a Style Component, as is Image
+                   <Header>{name}</Header>
+                   <Image
+                     alt={`Avatar for ${username}`}
+                     src={avatarURL}
+                   />
+                 </div>
+               )
+             }
+           #+end_src
+
+***** redux
+     
+      Redux is a state container for js. it basically helps coordinate/setup/control state change in
+      your components, and is not actually dependent/required to be used with react itself, but any
+      "view" library generally.
+
+      the difference in how plain react handles its state and how redux handles state helps
+      illuminate their differences and behavior.
+
+      react says that each component has its own state and is the logical organizer/container for
+      it. you then compose together components to create an app, which each act similarly. redux, on
+      the other hand, aggregates state in one location called a "Store" which in turn has a set of
+      strict rules for how the state can be changed.
+
+      one note on redux is that it was seriously overhyped as a tool. when it is the right tool for
+      the job, it is excellent; otherwise, it is very much overkill. the best way to appreciate redux
+      is to learn react first and then approach redux.
+** road to hello world
