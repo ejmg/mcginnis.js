@@ -69,6 +69,9 @@
     - [[#why-react][why react]]
     - [[#the-react-ecosystem][the react ecosystem]]
   - [[#road-to-hello-world][road to hello world]]
+    - [[#modules-cdns-and-script-tags][modules, CDNs, and script tags]]
+    - [[#npm][npm]]
+    - [[#webpack][webpack]]
 
 * modern js
 ** lecture 1
@@ -3135,3 +3138,490 @@
       the job, it is excellent; otherwise, it is very much overkill. the best way to appreciate redux
       is to learn react first and then approach redux.
 ** road to hello world
+*** modules, CDNs, and script tags
+    modules are nice and there are a lot of ways to use them. one big one is sourcing your scrips
+    via a CDN, another is sourcing it locally:
+    #+begin_src html
+      <body>
+
+        <!-- snip -->
+
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+        <script src="libs/react.min.js"></script>
+      </body>
+    #+end_src
+
+    problems with this approach:
+    1. if CDN goes down, your app goes down
+    2. with more than one script tag, order suddenly becomes a concern
+       - load something wrong, out of order, and it breaks
+    3. versioning
+       - if a package upgrades, need to hope CDN either puts up new version and/or they keep up old
+         version for your use case
+       - similarly, need to re-download if sourcing locally for upgrades
+
+         
+    problem becomes evident once you have more than a few scripts. what does an ideal solution look
+    like, then?
+    - make it easier to DL packages
+    - make it easier to upload packages
+    - make it easier to switch versions
+    - do it all for free
+
+      
+    congrats, we have just described npm
+    
+*** npm
+
+    npm is a for-profit co. that maintains the package manager npm, node package manager. npm
+    consists of two pieces:
+    1. the registry
+    2. the cli tool
+
+**** =npm init=
+     - =npm init= to start a project
+       + generates a =package.json= and =node_modules/= dir
+     - =node_modules=: when you install a package, the source code is found here
+       + when you import a module and it's not in your file path, your app looks in here
+     - =package.json=: contains all the meta info for your project. it contains the name, the author's
+       name, description, and the list of packages (and their versions) needed to run the project
+       + ex:
+         #+begin_src js
+           {
+             "name": "github-battle",
+             "version": "1.0.0",
+             "description": "Compare two Github user's profile.",
+             "author": "Tyler McGinnis",
+             "license": "ISC",
+             "homepage": "https://github.com/tylermcginnis/react-course#readme",
+             "keywords": [
+               "react",
+               "react-router",
+               "babel",
+               "webpack"
+             ],
+             "repository": {
+               "type": "git",
+               "url": "git+https://github.com/tylermcginnis/react-course.git"
+             },
+             "main": "index.js",
+             "dependencies": {
+               "prop-types": "^15.7.2",
+               "query-string": "^6.2.0",
+               "react": "^16.8.3",
+               "react-dom": "^16.8.3",
+               "react-icons": "^3.4.0",
+               "react-router-dom": "^4.3.1"
+             },
+             "devDependencies": {
+               "@babel/core": "^7.3.4",
+               "@babel/plugin-proposal-class-properties": "^7.3.4",
+               "@babel/preset-env": "^7.3.4",
+               "@babel/preset-react": "^7.0.0",
+               "babel-loader": "^8.0.5",
+               "babel-plugin-syntax-dynamic-import": "^6.18.0",
+               "copy-webpack-plugin": "^5.0.0",
+               "css-loader": "^2.1.0",
+               "html-webpack-plugin": "^3.2.0",
+               "style-loader": "^0.23.1",
+               "webpack": "^4.29.5",
+               "webpack-cli": "^3.2.3",
+               "webpack-dev-server": "^3.2.1"
+             },
+             "scripts": {
+               "start": "webpack-dev-server --open",
+               "build": "NODE_ENV='production' webpack",
+             }
+           }
+         #+end_src
+
+**** =package.json=
+     a few properties worth mentioning from above:
+     - =dependencies=: modules needed for your app to run
+       + whenever you install a new package, the source for that package is DL'd and added to
+         =node_modules=, along with its name and version info in the package.json
+     - =devDependencies=: the packages needed for just development. same story as ^^.
+
+**** =npm install=
+     the reason tracking things like =dependencies= and =devDependencies= in your =package.json= is so
+     important is because if someone else decides to install your program, they need all of that
+     information for it to work. in fact, that's what =npm install= as a command is for: it takes the
+     information known about your program in =package.json= and uses that to rebuild it.
+
+**** scripts
+     another property in =package.json= is =scripts=, which allows you to specify tasks to automate. in
+     the example given, two are defined already: =start= and =build=
+
+     to run a script, simply =cd= into the project directory containing the =package.json= and execute
+     =npm run <script_name>=
+
+**** installing packages
+
+     simple as =npm install <package_name>=. if it's on the npm registry and works with the versions
+     of existing installed modules, it'll be installed and have its meta data added to the
+     =package.json=.
+
+     to designate a dev dep, it's just =npm install <pkg> --save-dev=
+
+**** publishing packages
+     to publish:
+     - =package.json= needs to have:
+       + info for =name=
+       + =version=
+       + =main= (entry point into the package).
+     - then run =npm login=
+       + run through that + make acct as nec
+     - =npm publish=
+     - probably better to just follow the [[https://docs.npmjs.com/packages-and-modules/contributing-packages-to-the-registry][npm publishing guide]] 
+
+**** versioning
+     *semantic versioning* is gudt. when given a version like =v1.2.3=, it has three components to its
+     version:
+     - the first is its *major version*, which is =1=
+       + these are *breaking changes*, like changing the public API in any way
+     - the *minor version* is =2=
+       + a *non-breaking* feature that is added is such a minor-change
+     - the *patch version* is =3=
+       + everything else that isn't breaking or non-breaking feature additions
+
+         
+     npm provides tools to prevent the usage of incompatible packages:
+     - =^= in a version denotes to install the most recent package *with the same major version*
+       + ex:
+         #+begin_src js
+           "dependencies": {
+               "prop-types": "^15.7.2", // install the newest of prop-types that is v15, could be any vz.x.y such that x > 7 and y > 2 but z == 15 always
+               "query-string": "^6.2.0",
+               "react": "^16.8.3",
+               "react-dom": "^16.8.3",
+               "react-icons": "^3.4.0",
+               "react-router-dom": "^4.3.1"
+           }
+         #+end_src
+     - =​~​=: in a version means that *major and minor* must match
+       + e.g. if ="prop-types": "~15.7.2"= then whatever version of =prop-types= installed better have =v15.7.y=
+     - *exact version*: simply put the version number with no prefix symbol. it will always require
+       that version, no exceptions.
+
+*** webpack
+
+**** why does webpack exist
+     it's a bundler that makes the browser understand your code in terms of dependencies and imports
+     so that your =index.html= can call and reference it
+
+**** what problem is solved by webpack?
+     avoid having multiple =<script>= tags that need to be sourced, which introduce the issue of
+     dependency ordering, typos, or forgetting an import.
+
+     it can also do other useful things like packaging and transforming your SASS into CSS, ES6 into
+     ES5 that the browser understands.
+
+     *to install* for a new project, =npm install webpack webpack-cli --save-dev=
+
+**** =webpack.config.js=
+     to configure webpack for a specific project, we create and customize our =webpack.config.js=
+     file. this exports an object that contains all of these customizations:
+     #+begin_src js
+       module.exports = {}
+     #+end_src
+
+     
+     recall, the whole point of webpack is to:
+     1. examine all your modules
+     2. (optionally) transform them
+     3. intelligently put then together into one or more bundles
+
+        
+     to do this, webpack needs:
+     1. the entry point of your application
+     2. which transformations, if any, to perform
+     3. the location to put the newly transformed bundle(s)
+
+***** entry point
+
+      whenever your app is composed of modules, *there is always a module that serves as the entry
+      to the app*. often times it is an =index.js= file like so:
+      #+begin_verse
+      index.js
+      |- imports about.js
+      |- imports dashboard.js
+         |- imports graph.js
+         |- imports auth.js
+            |- imports api.js
+      #+end_verse
+
+      with the entry point, webpack then builds the *dependency graph of our app*. To give that entry
+      point:
+      #+begin_src js
+        module.exports = {
+          entry: './app/index.js'
+        }
+      #+end_src
+
+***** transformations with loaders
+
+      with an entry point, now we can tell what transformations we want, if any. to do this, we use
+      *loaders*.
+
+      when building the dependency graph, webpack looks at all your =import= and =export= statements and
+      only knows how to handle =js= and =json= files, which makes the following problematic:
+      #+begin_src js
+        import auth from './api/auth' 
+        import config from './utils/config.json' 
+        import './styles.css' 
+        import logo from './assets/logo.svg' 
+      #+end_src
+
+      there's a good chance we'll want things besides just =js= and =json= for our application, such as
+      =css= for stylings, graphics (like =svg=), and image for the app to render. this is exactly what
+      loaders are for, as they give webpack the /ability to load more than just js and json files/.
+
+      to use a loader:
+      1. install it
+         - for svg's: =npm install svg-inline-loader --save-dev=.
+      2. add it to =webpack.config.js=
+         - *all information for loaders go into an array of objects* under =module.rules=
+           + for =svg-inline-loader=
+             #+begin_src js
+               module.exports = {
+                 entry: './app/index.js',
+                 module: {
+                   rules: []
+                 }
+               }
+             #+end_src
+         - *two pieces of info needed for each loader*:
+           1. the type of file we want our loader to run on
+           2. the loader to use on that file type
+         - defined by an object with the properties =test= and =use= in our rule array.
+           + =test= is going to be a regex to match the file path
+           + =use= is just the loader
+           + for =svg-inline-loader=, we update our rules:
+             #+begin_src js
+               module.exports = {
+                 entry: './app/index.js',
+                 module: {
+                     rules: [
+                         { test: /\.svg$/, use: 'svg-inline-loader' }
+                     ]
+                 }
+               }
+             #+end_src
+
+             
+      now our app can import =svg='s as needed. we can do the same process for =css=:
+      1. install the loader
+         - =npm install css-loader --save-dev=
+      2. add it to =module.rules=
+         #+begin_src js
+           module.exports = {
+             entry: './app/index.js',
+             module: {
+               rules: [
+                 { test: /\.svg$/, use: 'svg-inline-loader' },
+                 { test: /\.css$/, use: 'css-loader' }
+               ]
+             }
+           }
+         #+end_src
+
+           
+      but wait: we want the ability to /import/ *and* /use/ our css, i.e. inject them into the DOM. what
+      we want is to import our css and then webpack /put all the css into <style> tags in the DOM/. we
+      need one more loader to do this: =style-loader=
+
+      let's add that loader:
+      1. =npm install style-loader --save-dev=
+      2. add it to =module.rules=
+         #+begin_src js
+           module.exports = {
+             entry: './app/index.js',
+             module: {
+               rules: [
+                 { test: /\.svg$/, use: 'svg-inline-loader' },
+                 { test: /\.css$/, use: [ 'style-loader', 'css-loader' ] }
+               ]
+             }
+           }
+         #+end_src
+         + note that we made =use= an /array of loaders to use on the =test= case/
+         + further note that we have =style-loader= *before* =css-loader=, this is critical because
+           webpack will *process these in reverse order*
+
+
+      turning modern js, i.e. es6, into browser friendly js follows the same pattern via babel and
+      wepback. what we want is the =babel-loader=:
+      1. =npm install babel-loader --save-dev=
+      2. update our webpack config:
+         #+begin_src js
+           module.exports = {
+             entry: './app/index.js',
+             module: {
+               rules: [
+                 { test: /\.svg$/, use: 'svg-inline-loader' },
+                 { test: /\.css$/, use: [ 'style-loader', 'css-loader' ] },
+                 { test: /\.(js)$/, use: 'babel-loader' }
+               ]
+             }
+           }
+         #+end_src
+
+***** the output of webpack
+
+      to tell webpack where to put its bundled output, specify it via the =output= property:
+      #+begin_src js
+        const path = require('path')
+
+        module.exports = {
+          /* snip */
+          output: {
+            path: path.resolve(__dirname, 'dist'),
+            filename: 'index_bundle.js'
+          }
+        }
+      #+end_src
+
+
+      thus *full webpack process looks like*:
+      1. webpack gets the entry point =app/index.js=
+      2. it examines all import/export statements and creates a dependency graph
+      3. webpark starts creating a bundle
+         - whenever it comes across a path we have a loader for, it transforms the code according to
+           the loader and adds it to the bundle
+      4. it takes the final bundle and outputs it to =dist/index_bundle.js=
+
+***** plugins
+
+      *plugins* allow you to execute tasks /after/ the bundle has been created. that means plugins can
+      be tasks on the bundle itself or the codebase. they are effectively /more powerful, less
+      restrictive/ versions of loaders. =plugins= exist as an array property on =modules.export=.
+
+      here are some example plugins that are common and useful.
+
+****** =HtmlWebpackPlugin=
+
+       This plugin automatically generates the =index.html= page for our application and stick it into
+       the same directory where our bundle is generated, along with the =<script>= tag that references
+       the bundle.
+
+       this is really convenient because it automatically handles the overhead of changing paths and
+       outputs wrt =index.html= whenever we edit these values in our =webpack.config.js= file.
+
+       to use it:
+       1. =npm install html-webpack-plugin --save-dev=
+       2. add to =module.rules=
+          #+begin_src js
+            const path = require('path')
+            const HtmlWebpackPlugin = require('html-webpack-plugin')
+
+            module.exports = {
+              /* snip */
+              plugins: [
+                new HtmlWebpackPlugin()
+              ]
+            }
+          #+end_src
+       
+****** =EnvironmentPlugin=
+
+       This plugin allows us to declare environment variables that signal to our web application
+       when deployed to production/staging/dev and change behavior accordingly. This plugin is
+       included in the webpack namespace because of how common/useful of a utility, so installing
+       isn't necessary.
+
+       to setup:
+       #+begin_src js
+         const path = require('path')
+         const HtmlWebpackPlugin = require('html-webpack-plugin')
+         const webpack = require('webpack')
+
+         module.exports = {
+           /* snip */
+           plugins: [
+             new HtmlWebpackPlugin(),
+             new webpack.EnvironmentPlugin({
+               'NODE_ENV': 'production'
+             })
+           ]
+         }
+       #+end_src
+
+       where =process.env.NODE_ENV= is the env variable we care about, and setting it to =production=
+       tells react to strip out dev features like warnings, etc.
+
+**** mode
+
+     when you build an app for production, there are steps you need to take. one is described above,
+     which is setting the =process.env.NODE_ENV= variable to =production=. Another two are *minifying
+     your code* and *stripping out comments*, both of which *reduce bundle size*
+
+     we could use plugins for each of these tasks, but webpack allows an easier method via the =mode=
+     property, which you can set to =production= or =development=.
+
+     This allows us to *drop the EnvironmentPlugin* wrt setting =process.env.NODE_ENV= while also
+     achieving minification:
+     #+begin_src js
+       const path = require('path')
+       const HtmlWebpackPlugin = require('html-webpack-plugin')
+
+       module.exports = {
+         /* snip */
+         plugins: [
+           new HtmlWebpackPlugin()
+         ],
+         mode: 'production'
+       }
+     #+end_src
+
+**** Running webpack
+
+     assuming we have npm and a =package.json= file, just add a script:
+     #+begin_src js
+       "scripts": {
+         "build": "webpack"
+       }
+     #+end_src
+
+     this will result in an optimized =index_bundle.js= along with an =index.html= under =dist/=
+
+**** running production vs development modes
+
+     let's make it easier to change between running =production= and =development= modes by adding some
+     script commands:
+     - =npm run start= will be the development build/server, which allows for code reloading and
+       warning generation, etc.
+     - =npm run build= will be the production release
+
+
+     we can adjust our =scripts= property in =package.json= to reflect the need to change the value of
+     =mode= in =webpack.config.js=.
+     #+begin_src js
+       // in package.json
+       "scripts": {
+         "build": "NODE_ENV='production' webpack",
+       }
+
+       // in webpack.config.js, change the `mode` property to:
+       module.exports = {
+           /* snip */
+           mode: process.env.NODE_ENV === 'production' ? 'production' : 'development'
+       }
+     #+end_src
+
+     now our =process.env.NODE_ENV= gets properly set as needed because =mode= gets properly set between
+     our =start= and =build= command scripts.
+
+**** webpack DevServer
+
+     when developing code, we want speed, not production quality deployments, when working on code
+     changes. =webpack-dev-server= helps with this by providing a development server for webpack. this
+     will keep our development files in memory and serve them locally instead of generating and
+     deploying them to =dist/=. this affords us *live code reloading*, which means changes we make in
+     our source code get recompiled quickly and reloaded into our browser for testing/development.
+
+     to use webpack server:
+     1. =npm install webpack-dev-server --save-dev=
+     2. edit our =start= script
+        #+begin_src js
+          "start": "webpack-dev-server"
+        #+end_src
