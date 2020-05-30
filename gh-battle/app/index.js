@@ -1,8 +1,9 @@
-import React from 'react'
+import React from 'react';
 /* ^^ we want to use the react for UI */
 /* vv and we want to target the dom (web browsers) */
-import ReactDom from 'react-dom'
-import './index.css'
+import ReactDom from 'react-dom';
+import './index.css';
+import Popular from './components/Popular';
 
 // Component
 // State
@@ -12,8 +13,8 @@ import './index.css'
 class App extends React.Component {
     render() {
         return (
-            <div>
-                Hello World!
+            <div className="container">
+                <Popular />
             </div>
         )
         // after babel, our jsx becomes:
