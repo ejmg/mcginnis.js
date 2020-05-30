@@ -72,6 +72,8 @@
     - [[#modules-cdns-and-script-tags][modules, CDNs, and script tags]]
     - [[#npm][npm]]
     - [[#webpack][webpack]]
+    - [[#react-elements-vs-components][react elements vs components]]
+    - [[#jsx-for-beginners][JSX for beginners]]
 
 * modern js
 ** lecture 1
@@ -3625,3 +3627,250 @@
         #+begin_src js
           "start": "webpack-dev-server"
         #+end_src
+*** react elements vs components
+**** what is a react element?
+     :LOGBOOK:
+     CLOCK: [2020-05-30 Sat 12:50]
+     :END:
+
+     there is a layer of abstraction between jsx and what react is actually doing which, in turn,
+     effects how we need to think about different parts of react.
+
+     one way to think about *react elements* is that they /describe what you want to see on the
+     screen/. put more explicitly, a *react element is an*object representation of a DOM
+     node*. ultimately, react elements are not what you see on the screen -- react generates an
+     /object representation of it/.
+
+     why? there are good reasons for it:
+     - js objects are lightweight
+       + react can create/destroy w/o much overhead
+     - react can analyze the object and diff it with the previous representation
+       + figure out what has and has not changed
+       + allows perf opts
+
+         
+     to create a basic react element:
+     #+begin_src js
+       const element = React.createElement(
+         'div',
+         {'id': 'login-btn'},
+         'login'
+       )
+     #+end_src
+
+     =createElement()= takes three args:
+     1. the tag name (=div=, =li=, etc)
+     2. any attributes you want the element to have
+     3. contents, or children, of the element
+        - in above ex, it's just the text "login", but could other elements
+
+          
+     the above example returns the following object:
+     #+begin_src js
+       {
+         type: 'div',
+         props: {
+           children: 'Login',
+           id: 'login-btn'
+         }
+       }
+     #+end_src
+     
+     
+     when rendered to the DOM, via =ReactDOM.render()=, we'll have a new DOM node that looks like:
+     #+begin_src html
+       <div id='login-btn'>login</div>
+     #+end_src
+
+     what are react components, then? a *react component* is a /functions or class which optionally
+     accepts input and returns a *react element*/
+
+     let's define a react component that yields us our react button element:
+     #+begin_src js
+       function Button({ onLogin }) {
+         return React.createElement(
+           'div',
+           {id: 'login-btn', onClick: onLogin },
+           'login'
+         )
+       }
+     #+end_src
+     our =Button= component:
+     - accepts an =onLogin= method (input) as its prop
+     - for =Button= to render our element, it passes the prop as the second argument
+     - assigns the inner value as 'login' still
+
+**** going deeper
+
+     you can make react elements out of more than basic html tags, including other react components
+     #+begin_src js
+       const element = React.createElements(
+         User,
+         {name: 'elias'},
+         null
+       )
+     #+end_src
+
+     when react sees a class or function as its first argument to =createElements()=, *it checks to see
+     what element it renders* given the corresponding props. it continue to progress downward until
+     there are no more =createElement= invocations which have a class/function as their first
+     argument.
+
+     here's an example:
+     #+begin_src js
+       function Button({ addFriend }) {
+         return React.createElement(
+           "button",
+           { onClick: addFriend },
+           "add friend"
+         )
+       }
+
+       function User({ name, addFriend }) {
+         return React.createElement(
+           "div",
+           null,
+           React.createElement(
+             "p",
+             null,
+             name
+           ),
+           React.createElement(Button, { addFriend })
+         )
+       }
+     #+end_src
+
+     the above snippet has two components, =User= and =Button=, with the former returning a DOM node
+     that will be a =div= with two children, a =p= that wraps the user name and a =Button= component.
+
+     here's what these components look like when we swap the =createElement= invocations with the
+     objects they create:
+     #+begin_src js
+       function Button ({ addFriend }) {
+         return {
+           type: 'button',
+           props: {
+             onClick: addFriend,
+             children: 'Add Friend'
+           }
+         }
+       }
+
+       function User ({ name, addFriend }) {
+         return {
+           type: 'div',
+           props: {
+             children: [
+               {
+                 type: 'p',
+                 props: {
+                   children: name
+                 }
+               },
+               {
+                 type: Button,
+                 props: {
+                   addFriend
+                 }
+               }
+             ]
+           }
+         }
+       }
+     #+end_src
+
+     at the end of the process, react will have a full representation of the DOM tree for that set
+     of components. for the above:
+     #+begin_src js
+       {
+         type: 'div',
+         props: {
+           children: [
+             {
+               type: 'p',
+               props: {
+                 children: 'elias'
+               }
+             },
+             {
+               type: 'button',
+               props: {
+                 onClick: addFriend,
+                 children: 'add friend'
+               }
+             }
+           ]
+         }
+       }
+     #+end_src
+
+     this process is called *reconciliation* in react and is *triggered every time =setState= or
+     =ReactDOM.render= are called*.
+
+     we can nearly answer our original question. in most react code, you don't actually call to
+     =React.createElement=, you use JSX instead. the abstraction layer between JSX and react is that
+     /JSX is always going to get compiled to React.createElement invocations/, often via Babel.
+
+     rewriting our code using proper JSX:
+     #+begin_src js
+       function Button ({ addFriend }) {
+         return (
+           <button onClick={addFriend}>Add Friend</button>
+         )
+       }
+
+       function User ({ name, addFriend }) {
+         return (
+           <div>
+             <p>{name}</p>
+             <Button addFriend={addFriend}/>
+           </div>
+         )
+       }
+     #+end_src
+
+     this code becomes, after transformation, our /original code!/
+     #+begin_src js
+       function Button ({ addFriend }) {
+         return React.createElement(
+           "button",
+           { onClick: addFriend },
+           "Add Friend"
+         )
+       }
+
+       function User({ name, addFriend }) {
+         return React.createElement(
+           "div",
+           null,
+           React.createElement(
+             "p",
+             null,
+             name
+           ),
+           React.createElement(Button, { addFriend })
+         )
+       }
+     #+end_src
+
+
+     so what do we call actions like calling to a react component, =<Icon />=? We call it *"creating
+     an element"* because after JSX is compiled, that is what we actually get:
+     #+begin_src js
+       React.createElement(Icon, null)
+     #+end_src
+
+     *all of these are examples of "creating a react element"*:
+     #+begin_src js
+       React.createElement(
+         'div',
+         { className: 'container' },
+         'Hello!'
+       )
+
+       <div className='container'>Hello!</div>
+
+       <Hello />
+     #+end_src
+*** JSX for beginners
+
