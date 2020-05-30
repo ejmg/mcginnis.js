@@ -4098,7 +4098,7 @@
 *** props practice
 
     make each problem's practice code yield the same UI given:
-    #+include: "assets/2933430.jpg"
+    [[file:assets/2933430.jpg]]
 
 **** problem 1
 
