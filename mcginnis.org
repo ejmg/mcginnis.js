@@ -74,6 +74,11 @@
     - [[#webpack][webpack]]
     - [[#react-elements-vs-components][react elements vs components]]
     - [[#jsx-for-beginners][JSX for beginners]]
+  - [[#passing-data-to-components][passing data to components]]
+    - [[#intro-to-props][intro to props]]
+    - [[#props-practice][props practice]]
+  - [[#rendering-lists][rendering lists]]
+    - [[#lists-in-react][lists in react]]
 
 * modern js
 ** lecture 1
@@ -3629,10 +3634,6 @@
         #+end_src
 *** react elements vs components
 **** what is a react element?
-     :LOGBOOK:
-     CLOCK: [2020-05-30 Sat 12:50]
-     :END:
-
      there is a layer of abstraction between jsx and what react is actually doing which, in turn,
      effects how we need to think about different parts of react.
 
@@ -3873,4 +3874,344 @@
        <Hello />
      #+end_src
 *** JSX for beginners
+**** variables
 
+     whenever you want to use an expression, i.e. something yielding a value, wrap it in ={}='s:
+     #+begin_src js
+       return (<p> hi {name}</p>)
+     #+end_src
+
+**** rendering nothing     
+
+     if you want react to *render nothing*, simply return =null=:
+     #+begin_src js
+       render() {
+         if (isLoading() === true) {
+           return null
+         }
+
+         return (
+           ...
+         )
+       }
+     #+end_src
+
+**** conditional rendering
+     
+     because JSX is "just js", there is no fancy templating syntax or structures built-in to use
+     like with jinja or vue.js. you just use js conditionals.
+     #+begin_src js
+       render() {
+         const authed = isAuthed()
+
+         if (authed === true) {
+           return <h1>Welcome back!</h1>
+         } else {
+           return <h1>Login to see your dashboard</h1>
+         }
+       }
+     #+end_src
+
+***** ternary operator
+      
+      when there is only one condition, common to use js' *ternary operator*:
+      #+begin_src js
+        render() {
+          return isAuthed() === true
+            ? <h1>Welcome back!</h1>
+            : <h1>Login to see your dashboard</h1>
+        }
+      #+end_src
+
+      we can go one step further, rendering the ternary logic inside of ={}='s:
+      #+begin_src js
+        render() {
+        // this is kind of whack imho
+          return (
+            <div>
+              <Logo />
+              {isAuthed() === true
+                ? <h1>Welcome back!</h1>
+                : <h1>Login to see your dashboard</h1>}
+            </div>
+          )
+        }
+      #+end_src
+
+      finally, it is common to use the =null= to yield nothing pattern with ternary-style components:
+      #+begin_src js
+        render() {
+          return (
+            <div>
+              <Logo />
+              {showWarning() === true
+                ? <Warning />
+                : null}
+            </div>
+          )
+        }
+      #+end_src
+
+**** logical =&&= operator
+
+     =&&= is the logical AND operator:
+     #+begin_src js
+       if (user && authed) { // ...
+     #+end_src
+
+     it also *short-circuits*, i.e. won't bother checking the second operand when it knows the first
+     is false. consequentially, we can use it as a /terser ternary operator/:
+     #+begin_src js
+       render() {
+         return (
+           <div>
+             <Logo />
+             {showWarning() === true && <Warning />}
+           </div>
+         )
+       }
+     #+end_src
+
+**** react fragment
+
+     what is wrong with the following react code?
+     #+begin_src js
+       render() {
+         const name = 'Tyler'
+
+         return (
+           <h1>Hello, {name}</h1>
+           <p>Today is {getDay()}</p>
+           <p>What is 2 + 2? {2 + 2}</p>
+         )
+       }
+     #+end_src
+
+     while it looks good, the problem is that *adjacent JSX elements must be wrapped in an enclosing
+     tag*, i.e. *we can only ever return one top-level element from a component*. in the above snippet
+     we are trying to return three, however, and can fix this by wrapping them all in a =div=:
+     #+begin_src js
+       render() {
+         const name = 'Tyler'
+
+         return (
+             <div>
+               <h1>Hello, {name}</h1>
+               <p>Today is {getDay()}</p>
+               <p>What is 2 + 2? {2 + 2}</p>
+             </div>
+         )
+       }
+     #+end_src
+
+     however, now we have a new problem, though lesser in nature: we are unnecessarily introducing
+     an extra div, a semantically useless one. this is what =React.Fragment= was intended for. When
+     you want to return adjacent elements but don't want to change the markup, use =React.Fragment=
+     #+begin_src js
+       render() {
+         const name = 'Tyler'
+
+         return (
+           <React.Fragment>
+             <h1>Hello, {name}</h1>
+             <p>Today is {getDay()}</p>
+             <p>What is 2 + 2? {2 + 2}</p>
+           </React.Fragment>
+         )
+       }
+     #+end_src
+
+     there is a shortcut for this, but some people don't like it i guess?
+     #+begin_src js
+       render() {
+         const name = 'Tyler'
+
+         return (
+           <>
+             <h1>Hello, {name}</h1>
+             <p>Today is {getDay()}</p>
+             <p>What is 2 + 2? {2 + 2}</p>
+           </>
+         )
+       }     
+     #+end_src
+
+**** capitalization and react components
+
+     how does react tell the difference between plain HTML and components? *capitalization*. that's all.
+
+** passing data to components
+
+*** intro to props
+
+    react relies heavily on composition and, as such, there needs to be a way to pass data /into/
+    components. this requires covering the topic of *react props*, which are to components what
+    arguments are to functions.
+
+    there are two facets to this:
+    1. how to pass data into components
+    2. accessing the data once it has been passed in
+
+**** passing data to a component
+
+     this is straightforward, you pass data to a react component the same way you would set an HTML
+     attribute:
+     #+begin_src js
+       <Hello name='elias' />
+     #+end_src
+     for this snippet, we are passing in a =name= prop to the =Hello= component.
+
+**** accessing props
+     in a *class component*, accessing a prop passed to it is easy via the =props= key on the component's
+     instance, i.e. =this=:
+     #+begin_src js
+       class Hello extends React.Component {
+         render() {
+           return (
+               <h1>hello, {this.props.name}</h1>
+           )
+         }
+       }
+     #+end_src
+
+     each prop that is passe to a component is added as a key on =this.props=. if no props are passed
+     to a component, =this.props= will be an empty object.
+
+     *we can pass almost anything as a prop to a component*
+     #+begin_src js
+       <Profile 
+         username='elias'
+         authed={true}
+         logout={() => handleLogout()}
+         header={<h1>👋</h1>}
+       />
+     #+end_src
+
+     *if you pass a prop without a value, its value will be set to =true=*
+     #+begin_src js
+       // these are equivalent
+       <Profile authed={true} />
+
+       <Profile authed />
+     #+end_src
+
+*** props practice
+
+    make each problem's practice code yield the same UI given:
+    #+include: "assets/2933430.jpg"
+
+**** problem 1
+
+     #+begin_src html :tangle "./practice/props/problem1/index.html"
+       <div id='app'></div>
+     #+end_src
+
+     #+begin_src js :tangle "./practice/props/problem1/index.js"
+       class Badge extends React.Component {
+         render() {
+           return (
+             <>
+               <img src={this.props.img} />
+               <h1>Name: {this.props.name}</h1>
+               <h3>username: {this.props.username}</h3>
+             </>
+           )
+         }
+       }
+
+       ReactDOM.render(
+         <Badge 
+           name='Tyler McGinnis'
+           username='tylermcginnis'
+           img='https://avatars0.githubusercontent.com/u/2933430?v=3&s=460'/>,
+         document.getElementById('app')
+       );
+     #+end_src
+
+**** problem 2
+
+     #+begin_src html :tangle "./practice/props/problem2/index.html"
+       <div id='app'></div>
+     #+end_src
+
+     #+begin_src js :tangle "./practice/props/problem2/index.js"
+       var USER_DATA = {
+         name: 'Tyler McGinnis',
+         img: 'https://avatars0.githubusercontent.com/u/2933430?v=3&s=460',
+         username: 'tylermcginnis'
+       }
+
+       class Badge extends React.Component {
+         render() {
+           return (
+             <div>
+               <img src={this.props.user.img} />
+               <h1>Name: {this.props.user.name}</h1>
+               <h3>username: {this.props.user.username}</h3>
+             </div>
+           )
+         }
+       }
+
+       ReactDOM.render(
+         <Badge user={USER_DATA}/>,
+         document.getElementById('app')
+       );
+     #+end_src
+
+**** problem 3
+
+     #+begin_src html :tangle "./practice/props/problem3/index.html"
+       <div id='app'></div>
+     #+end_src
+
+     #+begin_src js :tangle "./practice/props/problem3/index.js"
+       class Avatar extends React.Component {
+         render() {
+           return (
+             <img src={ this.props.img } />
+           )
+         }
+       }
+
+       class Label extends React.Component {
+         render() {
+           return (
+               <h1>Name: { this.props.name }</h1>
+           )
+         }
+       }
+
+       class ScreenName extends React.Component {
+         render() {
+           return (
+               <h3>Username: { this.props.username }</h3>
+           )
+         }
+       }
+
+       class Badge extends React.Component {
+         render() {
+           return (
+             <div>
+               <Avatar img={ this.props.user.img }/>
+               <Label name={ this.props.user.name }/>
+               <ScreenName username={ this.props.user.username }/>
+             </div>
+           )
+         }
+       }
+
+       ReactDOM.render(
+         <Badge user={{
+           name: 'Tyler McGinnis',
+           img: 'https://avatars0.githubusercontent.com/u/2933430?v=3&s=460',
+           username: 'tylermcginnis'
+         }} />,
+         document.getElementById('app')
+       );
+     #+end_src
+
+** rendering lists
+
+*** lists in react
