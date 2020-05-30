@@ -79,6 +79,8 @@
     - [[#props-practice][props practice]]
   - [[#rendering-lists][rendering lists]]
     - [[#lists-in-react][lists in react]]
+    - [[#practice][practice]]
+  - [[#managing-state][managing state]]
 
 * modern js
 ** lecture 1
@@ -4098,7 +4100,8 @@
 *** props practice
 
     make each problem's practice code yield the same UI given:
-    [[file:assets/2933430.jpg]]
+
+    [[file:assets/2933430.png]]
 
 **** problem 1
 
@@ -4215,3 +4218,125 @@
 ** rendering lists
 
 *** lists in react
+
+    unlike vue, jinja, etc, react does not have an API for list rendering: "it's just js", with "it"
+    being JSX. take the following as example, where we leverage =.map()= to transform one array of
+    tweet data into a new array, this one with the stars of each tweet:
+    #+begin_src js
+      const tweets = [
+        { id: 1, stars: 13, text: 'Turns out "git reset --hard HEAD^" was a terrible idea.' },
+        { id: 2, stars: 87, text: 'Tech conferences are too expensive.' },
+        { id: 3, stars: 51, text: 'Clean code is subjective. Optimize for deletion.' },
+        { id: 4, stars: 19, text: 'Maybe the real benefit of open source was the friendships we made along the way?' },
+      ]
+
+      const stars = tweets.map((tweet) => tweet.stars) // [13,87,51,19]
+    #+end_src
+
+
+    with JSX, to make a list of =li= for each tweet, it looks like:
+    #+begin_src js
+      <ul id="tweets">
+        {tweets.map((tweet) => (
+          <li>
+            {tweet.text}
+          </li>
+        ))}
+      </ul>
+    #+end_src
+
+    but wait! with js' =.map=, we need to make sure that each =li= gets a *unique* =key= prop:
+    #+begin_src js
+      <ul id="tweets">
+        {tweets.map((tweet) => (
+          <li key={ tweet.id }>
+            {tweet.text}
+          </li>
+        ))}
+      </ul>    
+    #+end_src
+
+    because it's react's job to *render as fast as possible*, giving a unique =key= prop to each =li=
+    helps react know which/where/when to render changes through a component, if any at all.
+
+*** practice
+
+    correctly implement the following UI for each sample react impl code:
+
+    [[file:assets/Screenshot_20200530_170001.png]]
+
+**** problem 1
+
+     #+begin_src html :tangle "practice/lists/problem1/index.html"
+       <div id='app'></div>
+     #+end_src
+
+     #+begin_src js :tangle "practice/lists/problem1/index.js"
+       class List extends React.Component {
+         render() {
+           // Render a list using the "friends" being passed in.
+    
+           return (
+             <ul>
+               {this.props.friends.map((f) => (
+                   <li key={f.id}>
+                     {f.name}
+                   </li>
+               ))}
+             </ul>
+           )
+         }
+       }
+
+       ReactDOM.render(
+         <List friends={[
+           { id: 893, name: 'Mikenzi' },
+           { id: 871, name: 'Cash' },
+           { id: 982, name: 'Steven' },
+           { id: 061, name: 'Kimmy' },
+           { id: 117, name: 'Doug' }
+         ]} />,
+         document.getElementById('app')
+       );
+     #+end_src
+
+**** problem 2
+
+     #+begin_src html :tangle "practice/lists/problem2/index.html"
+       <div id='app'></div>
+     #+end_src
+
+     #+begin_src js :tangle "practice/lists/problem2/index.js"
+       class List extends React.Component {
+         render() {
+           // Render a list using the "friends" being passed in.
+
+           return (
+             <ul>
+               {/* 
+                   be careful, index can break; i.e. 
+                   what happens when you delete a friend?
+                ,*/}
+               {this.props.friends.map((f, i) => (
+                 <li key={ i }>
+                   { f }
+                 </li>
+               ))}
+             </ul>
+           )
+         }
+       }
+
+       ReactDOM.render(
+         <List friends={[
+           'Mikenzi',
+           'Cash',
+           'Steven',
+           'Kimmy',
+           'Doug'
+         ]} />,
+         document.getElementById('app')
+       );
+     #+end_src
+
+** managing state
