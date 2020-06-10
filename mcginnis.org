@@ -81,6 +81,10 @@
     - [[#lists-in-react][lists in react]]
     - [[#practice][practice]]
   - [[#managing-state][managing state]]
+    - [[#intro-to-this-keyword-implicit-binding][intro to =this= keyword, implicit binding]]
+    - [[#explicit-binding-with-call-apply--bind][explicit binding with =.call=, =.apply=, & =.bind=]]
+    - [[#binding-with-new-lexical-and-windows][binding with =new=, =lexical=, and =window='s]]
+    - [[#managing-state-in-react][managing state in react]]
 
 * modern js
 ** lecture 1
@@ -4340,3 +4344,402 @@
      #+end_src
 
 ** managing state
+*** intro to =this= keyword, implicit binding
+
+    =this= keyword exists to *allow reuse of functions with different contexts*, i.e. *"this" allows you
+    to decide which object should be used when invoking a function or method*.
+    
+**** determining what =this= is referencing
+
+     to determine what =this= is, the most important question to ask is *"where is this function being
+     invoked?"*. The *only* means to do this is by looking where it is being invoked, literally.
+
+     take the following greeting function:
+     #+begin_src js
+       function greet (name) {
+         alert(`Hello, my name is ${name}`)
+       }
+     #+end_src
+
+     given this function definition, it is impossible to know who =name= will be. we need the
+     invocation of the function, e.g. =greet("ejmg")=. /the same logic applies to =this=!/. *in effect,
+     "this" is an implicit argument that gets passed to all functions*. it changes with where it gets
+     called as a result of context.
+
+     upon finding the function invocation, we then need to use five more rules to help determine the
+     final result:
+     1. implicit binding
+     2. explicit binding
+     3. new binding
+     4. lexical binding
+     5. window binding
+
+**** implicit binding
+
+     this is the first rule for a reason: it is probably lead to what =this= is most of the time.
+
+     given:
+     #+begin_src js
+       const user = {
+         name: 'ejmg',
+         age: 27,
+         greet() {
+           alert(`Hello, my name is ${this.name}`)
+         }
+       }
+     #+end_src
+
+     and would be invoked with =user.greet()=
+
+     in order to figure out what =this= is, the =implicit binding= rule says to *look to the left of the
+     dot when the function is invoked*. the object at the left will be what =this= is referencing.
+
+     with our example above, =user= is what is referenced, and it is effectively the same as if =greet=
+     were declared as:
+     #+begin_src js
+       greet() {
+         alert(`Hello, my name is ${user.name}`)
+       }
+     #+end_src
+
+     now say that =user= has another property, =mother=, that is its own object with a =greet= and =name=
+     property:
+     #+begin_src js
+       const user = {
+         name: 'ejmg',
+         age: 27,
+         greet() {
+           alert(`Hello, my name is ${this.name}`)
+         },
+         mother: {    
+           name: 'jane doe',    
+           greet() {
+             alert(`Hello, my name is ${this.name}`)
+           }
+         }
+       }
+     #+end_src
+
+     what will
+     #+begin_src js
+       user.greet();
+       user.mother.greet();
+     #+end_src
+     
+     invoke? simple, once again, *look immediately to the left*
+     #+begin_src js
+       "ejmg"
+       "jane doe"
+     #+end_src
+
+*** explicit binding with =.call=, =.apply=, & =.bind=
+
+    what to do when there is no dot to look left of?
+
+**** explicit binding
+
+     modifying our code, what if it looked like:
+     #+begin_src js
+       function greet () {
+         alert(`Hello, my name is ${this.name}`)
+       }
+
+       const user = {
+         name: 'ejmg',
+         age: 24,
+       }
+     #+end_src
+
+     with the given declaration, cannot call =user.greet()= because =greet()= is no longer a method on
+     =user=. in this case, =.call()= is exactly what we need.
+
+     in js, *every function has a method, =.call()=, that allows you to invoke the function specifying
+     what context the function will be invoked*. thus, the following will work:
+     #+begin_src js
+       greet.call(user)
+     #+end_src
+
+     the first argument passed to =.call()= is the context, "the focal object", in which the fn is
+     called, i.e. what =this= is referencing to.
+
+     let's modify our function further:
+     #+begin_src js
+       function greet (l1, l2, l3) {
+         alert(
+           `Hello, my name is ${this.name} and I know ${l1}, ${l2}, and ${l3}`
+         )
+       }
+     #+end_src
+
+     we can still invoke =greet()= just by passing the arguments alongside the function itself:
+     #+begin_src js
+       greet.call(user, 'rust', 'python', 'haskell');
+       // "Hello, my name is ejmg and I know rust, python, and haskell"
+     #+end_src
+
+     alright, but it's kind of annoying that we have to pass these arguments one by one. what if we
+     could shove them into an array? this is what =.apply()= is for, which *takes an array of
+     arguments and bind each element to each argument in the function object*. =.apply()= is
+     the same as =.call()= except for this single difference.
+     
+     #+begin_src js
+       const langs = ["rust", "python", "haskell"];
+       greet.apply(user, langs);
+       // equiv to:
+       // greet.call(user, langs[0], langs[1], langs[2]);
+       // same result:
+       // "Hello, my name is ejmg and I know rust, python, and haskell"
+     #+end_src
+
+     the final trick for *explicit binding*, which is all about explicitly specifying what we are
+     attaching =this= to, is =.bind()= itself, which *returns a new function object that is not
+     immediately invoked*, but rather is for your use later. (this feels a lot like currying...)
+
+     take the following example:
+     #+begin_src js
+       function greet (l1, l2, l3) {
+         alert(
+           `Hello, my name is ${this.name} and I know ${l1}, ${l2}, and ${l3}`
+         )
+       }
+
+       const langs = ["rust", "python", "haskell"];
+       const user = {
+         name: 'ejmg',
+         age: 24,
+       }
+
+       let new_fn = greet.bind(user, lang[0], lang[1], lang[2]);
+
+       new_fn(); // "Hello, my name is ejmg and I know rust, python, and haskell"
+     #+end_src
+
+     thus we have rule #2: explicit binding
+
+*** binding with =new=, =lexical=, and =window='s
+
+**** using =new=
+
+     using =new= means the js interpreter will create a new object and call it =this= under the hood.
+
+     #+begin_src js
+       function User (name, age) {
+         /*
+           js will create a `this` object which delegates to the function's prototype
+           upon a failed lookup. if this function is called with `new`, then it
+           returns that new object, `this`, that is referenced.
+          ,*/
+         this.name = name;
+         this.age = age;
+       }
+
+       const user = new User('ejmg', 24);
+     #+end_src
+
+     this is the basis of *rule #3*
+
+**** lexical binding
+
+     es6's introduction of arrow functions allow for more concise syntax but also for better =this=
+     semantics by *not introducing any sort of context themselves*. instead, arrow functions have
+     *lexical scoping*.
+
+     let's redefine our code once again:
+     #+begin_src js
+       const user = {
+         name: 'ejmg',
+         age: 24,
+         languages: ['rust', 'python', 'haskell'],
+         greet() {}
+       }
+     #+end_src
+
+     let's also make =greet()= more robust by taking away the hardcoded assumption of langs being only
+     3 elements long.
+     #+begin_src js
+       greet() {
+         const hello = `hello, my name is ${this.name} and i know`;
+         const langs = this.languages.reduce(function(str, l, i) {
+           if (i === this.languages.length - 1) {
+             return `${str}, and ${l}.`
+           }
+           return `${str} ${l}, `
+         }, "")
+
+         console.log(hello + langs)
+       }
+     #+end_src
+
+
+     bad news! this throws an =Uncaught TypeError: Cannot read property 'length' of undefined=, lmao!
+
+     how do we resolve this bug? first off, we don't know where it's being invoked because
+     =.reduce()=, where the call is occurring, is an /anonymous function/. as it stands, the
+     implementation has no property known as =this.languages=. we need to tell js to pass the context
+     of the calling function to =.reduce()=, since it is js that implements the =.reduce()= function we
+     are executing. this context is =user='s context. that's what =.bind()= is exactly for:
+     #+begin_src js
+       greet() {
+         const hello = `hello, my name is ${this.name} and i know`;
+         const langs = this.languages.reduce(function(str, l, i) {
+           if (i === this.languages.length - 1) {
+             return `${str}, and ${l}.`
+           }
+           return `${str} ${l}, `
+           // note the binding occurs here!
+         }.bind(this), "");
+
+         console.log(hello + langs)
+       }
+     #+end_src
+
+
+     the issue shown above is the exactly what arrow functions are meant to solve:
+     #+begin_src js
+       greet() {
+         const hello = `hello, my name is ${this.name} and i know`;
+         const langs = this.languages.reduce((str, l, i) => {
+           if (i === this.languages.length - 1) {
+             return `${str}, and ${l}.`
+           }
+           return `${str} ${l}, `
+           // note the binding occurs here!
+         }, "");
+
+         console.log(hello + langs)
+       }
+     #+end_src
+
+**** window binding
+
+     known as the "catch-all" case, *window binding* is when all other lookups fail,
+     i.e. =this.<property>= fails to lookup for lack of dot notation, uses of =.call()=, =.apply()=, and
+     =.bind()=. for instance, what if we evaluated the following with no further code/context?
+     #+begin_src js
+       function get_age() {
+         console.log(`my age is ${this.age}`);
+       }
+     #+end_src
+
+     *in a browser's js interpreter*, it'll result in ="my age is undefined"=. this is because the
+     context for =this= is of the global =window= object. *this is rule #5*.
+
+     the following would work as 'expected':
+     #+begin_src js
+       window.age = 24;
+       function get_age() {
+         console.log(`my age is ${this.age}`);
+       }       
+     #+end_src
+
+**** ='use strict'= and es5+
+
+     as of es5, if you use the pragma(?) ='use strict'= at the top of a module, then js will behave
+     itself and not default to the =window= object and instead will throw a type error.
+
+     #+begin_src js
+       'use strict'
+
+       window.age = 24
+
+       function sayAge () {
+         console.log(`My age is ${this.age}`)
+       }
+
+       sayAge() // TypeError: Cannot read property 'age' of undefined
+     #+end_src
+
+**** in summary:
+
+    1. Look to where the function was invoked.
+    2. Is there an object to the left of the dot? If so, that’s what the "this" keyword is referencing. If not, continue to #3.
+    3. Was the function invoked with "call", "apply", or "bind"? If so, it’ll explicitly state what
+       the "this" keyword is referencing. If not, continue to #4.
+    4. Was the function invoked using the "new" keyword? If so, the "this" keyword is referencing
+       the newly created object that was made by the JavaScript interpreter. If not, continue to #5.
+    5. Is "this" inside of an arrow function? If so, its reference may be found lexically in the
+       enclosing (parent) scope.
+    6. If not, continue to #6.Are you in "strict mode"? If yes, the "this" keyword is undefined. If not, continue to #7.
+    7. JavaScript is weird. "this" is referencing the "window" object.
+
+*** managing state in react
+
+    two questions
+
+    1. how do you add state to a react component?
+    2. how do you update a react component's state?
+    
+**** adding state
+
+     use the =constructor= method, which is made available from the es6 spec:
+     #+begin_src js
+       class Hello extends React.Component {
+         constructor(props) {
+           super(props);
+
+           this.state = {
+             name: 'ejmg'
+           }
+         }
+         render() {
+           return (
+               <h1>hello, {this.state.name}</h1>
+           )
+         }
+       }
+     #+end_src
+
+     1. get in the habit of calling =super(props)=
+        - we don't get access to =this= until we call the super constructor
+        - reasons we need to give =props= to =super= as well, tbd
+     2. note how we add a property to our component, =state=, after calling super
+        - we can now add to it and access it as necessary via =this.state=
+
+**** updating state
+
+     first instinct might just to do it as you would any other object property, i.e.
+     #+begin_src js
+       this.state.name = 'pius';
+     #+end_src
+
+     *don't do this*. react is all about separating the view from state, and rather allowing
+     components to figure out what needs updating and what doesn't. doing it directly, as above,
+     would keep react out of the loop and your components wouldn't know which are in need of
+     re-updating. for these purposes, =setState()= exists as a *helper method to update the state of a
+     component, which, in turn, re-renders the UI*. this method lives on the component's instance.
+
+     there are two approaches to using =setState=, the most popular being to *pass an object as the
+     first argument, which is then merged with the current state*:
+     #+begin_src js
+       updateName(newName) {
+         this.setState({
+           name: newName
+         })
+       }
+     #+end_src
+
+     react will then update the =name= property on =this.state= to =newName=, along with =render()= getting
+     re-invoked for that particular component to get a new description of the UI based on the new
+     state. finally, react will ensure the UI is up to date by updating the DOM based on this
+     description.
+
+**** updating state: the other way
+
+     the other way to use =setState= is to *pass it a function*. the function passed to =setState= then
+     gets passed the state of the component, which it operates on, and then returns a new object
+     that will be merged into the new state.
+     #+begin_src js
+       addFriend(newFriend) {
+         this.setState((state) => {
+           return {
+             friends: state.friends.concat(newFriend)
+           }
+         })
+       }
+     #+end_src
+
+     =addFriend= concats a new friend onto an array of =friends= existing on =this.state=.
+
+     *when to use a function?* if you are creating the new state /based off of the previous state/, then
+     use the function version of =setState=, otherwise use the object version. *why?* /state updates may
+     be asynchronous/, and the functional version better performs here.
