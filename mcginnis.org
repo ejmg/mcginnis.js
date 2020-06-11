@@ -85,6 +85,7 @@
     - [[#explicit-binding-with-call-apply--bind][explicit binding with =.call=, =.apply=, & =.bind=]]
     - [[#binding-with-new-lexical-and-windows][binding with =new=, =lexical=, and =window='s]]
     - [[#managing-state-in-react][managing state in react]]
+    - [[#practice-1][practice]]
 
 * modern js
 ** lecture 1
@@ -4723,6 +4724,40 @@
      state. finally, react will ensure the UI is up to date by updating the DOM based on this
      description.
 
+     for this to work, however, *we must inform react/js that this helper method exists*:
+     #+begin_src js
+       constructor(propts) {
+         super(props);
+
+         this.state = {
+           name: 'ejmg'
+         };
+
+         // look here!
+         this.updateName = this.updateName.bind(this);
+       }
+     #+end_src
+
+     why? well, let's look at the updated =render()= component first:
+     #+begin_src js
+       render() {
+         return (
+             <React.Fragment>
+             <h1>Hello, {this.state.name}</h1>
+             <button onClick={this.updateName}>Change Name</button>
+             </React.Fragment>
+         )
+       }
+     #+end_src
+
+     not attaching the method to the instance would result in =TypeError: Cannot read property
+     'setState' of undefined= upon the user clicking the button. when figuring out where =this= is,
+     remember to look at the function invoking =this=.
+
+     recall now that, in jsx, what we are returning with =render()= is a react element where =onClick=
+     is passed the prop =this.updateName=. in this situation, without attaching =updateName= to the
+     instance =this=, react has no clue where this context should take place.
+
 **** updating state: the other way
 
      the other way to use =setState= is to *pass it a function*. the function passed to =setState= then
@@ -4743,3 +4778,104 @@
      *when to use a function?* if you are creating the new state /based off of the previous state/, then
      use the function version of =setState=, otherwise use the object version. *why?* /state updates may
      be asynchronous/, and the functional version better performs here.
+*** practice
+    two unfinished react apps. the first allows the user to toggle light/dark mode, the second is a
+    basic counter app. finish their implementations
+**** problem 1
+
+     #+begin_src html :tangle "practice/state/problem1/index.html"
+       <div id='app'></div>
+     #+end_src
+     #+begin_src js :tangle "practice/state/problem1/index.js"
+       class Container extends React.Component {
+         constructor(props) {
+           super(props)
+    
+           this.state = {
+             mode: 'light' 
+           }
+           this.handleLightMode = this.handleLightMode.bind(this);
+           this.handleDarkMode = this.handleDarkMode.bind(this);
+         }
+         handleLightMode() {
+           // Change 'mode' on the component's state to 'light'
+           this.setState({
+             mode: 'light'
+           })
+         }
+         handleDarkMode() {
+           // Change 'mode' on the component's state to 'dark'
+           this.setState({
+             mode: 'dark'
+           })
+         }
+         render() {
+           const { mode } = this.state
+    
+           return (
+             <div style={{
+               height: '100%',
+               background: mode === 'light' ? '#fff' : '#000'
+             }}>
+               {mode === 'light'
+                 ? <button onClick={this.handleDarkMode}>Dark Mode</button>
+                 : <button onClick={this.handleLightMode}>Light Mode</button>}
+             </div>
+           )
+         }
+       }
+
+       ReactDOM.render(
+         <Container />,
+         document.getElementById('app')
+       );
+     #+end_src
+**** problem 2
+     #+begin_src html :tangle "practice/state/problem2/index.html"
+       <div id='app'></div>
+     #+end_src
+     
+     #+begin_src js :tangle "practice/state/problem2/index.js"
+       class Count extends React.Component {
+         constructor(props) {
+           super(props)
+    
+           this.state = {
+             count: 0
+           }
+
+           this.increment = this.increment.bind(this);
+           this.decrement = this.decrement.bind(this);
+         }
+         increment() {
+           // Increment count by 1
+           this.setState(({ count }) => { // fancy deconstruction within the arrow function's args
+             return {
+               count: ++count
+             }
+           })
+         }
+         decrement() {
+           // Decrement count by 1
+           this.setState(({ count }) => { // same again here, take the property we need, not the whole state
+             return {
+               count: --count
+             }
+           })
+         }
+         render() {
+           return (
+             <div>
+               <button onClick={this.decrement}>-</button>
+               <span>{this.state.count}</span>
+               <button onClick={this.increment}>+</button>
+             </div>
+           )
+         }
+       }
+
+       ReactDOM.render(
+         <Count />,
+         document.getElementById('app')
+       );
+     #+end_src
