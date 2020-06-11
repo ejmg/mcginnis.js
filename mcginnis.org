@@ -88,6 +88,9 @@
     - [[#practice-1][practice]]
   - [[#functional-components][functional components]]
     - [[#pure-functions][pure functions]]
+  - [[#validating-props-with-proptypes][validating props with PropTypes]]
+    - [[#proptypes][PropTypes]]
+    - [[#practice-2][practice]]
 
 * modern js
 ** lecture 1
@@ -4913,3 +4916,222 @@
 
     as an aside, *react hooks* help reduce the need for frivolous component boilerplate as well, but
     won't be touched on in this class.
+** validating props with PropTypes
+*** PropTypes
+    js is trash and doesn't have a good type system and people think checking datatypes makes for
+    good programming lang design. react's equivalent to this is validating the props being passed to
+    a component.
+
+    the gist of proptypes is that whenever you create a component that accepts props, you add a
+    static =propTypes= property to that component. *the =propTypes= object contains keys that represent
+    the props the component accepts and whose values represent the datatypes for those props*.
+
+    during development, when a prop being passed to a component doesn't match the datatype specified
+    in =propTypes=, a warning will be shown in the console.
+
+    example:
+    #+begin_src js :tangle "react_ex/propTypes/hello_fn.js"
+      import React from 'react'
+      import PropTypes from 'prop-types'
+
+      export default function Hello ({ name }) {
+        return <h1>hello, { name }</h1>
+      }
+
+      Hello.propTypes = {
+        name: PropTypes.string.isRequired
+      }
+    #+end_src
+
+    key notes:
+    - =PropTypes=, capital =P=, is what we call the object being exported from the =prop-types= pkg
+    - =propTypes= is the name of the static property we add to our component
+    - we use =PropTypes= to declare the type of prop
+      + in the above example, we state that anytime you use =Hello=, you are required to pass it a
+        =name= prop.
+      + not only do you need to pass =name=, it needs to be a string
+
+        
+    thus:
+    #+begin_src js
+      <Hello name='ejmg' /> // ok
+      <Hello /> // Warning: Failed prop type: The prop `name` is marked as required in `Hello`, but its value is `undefined`.
+      <Hello name={ true } /> // // Warning: Failed prop type: Invalid prop `name` of type `boolean` supplied to `Hello`, expected `string`.
+    #+end_src
+
+    react component classes follow the same syntax/method for adding proptypes:
+    #+begin_src js :tangle "react_ex/propTypes/Hello.js"
+      class Hello extends React.Component {
+        render() {
+          return <h1>Hello, {this.props.name}</h1>
+        }
+      }
+
+      Hello.propTypes = {
+        name: PropTypes.string.isRequired
+      }
+    #+end_src
+    
+**** the =prop-types= api, how to use them more
+
+     by default, all *proptypes are optional*. You must add =.isRequired= to each property to make them
+     required. notable proptypes besides the obvious ones (e.g. =boolean=, =array=, etc)
+
+     - =PropTypes.any=: don't use this lol, it allows, uh, anything
+     - =PropTypes.arrayOf=: the prop being passed into the component must be an array /of a certain type/
+       + e.g. =PropTypes.arrayOf(PropTypes.string)= for array of strings
+     - =PropTypes.element=: must be a react element
+     - =PropTypes.exact=: must be an object *with a specific shape*, any extra properties will throw an
+       error:
+       #+begin_src js
+         Header.propTypes = {
+           user: PropTypes.exact({
+             name: PropTypes.string,
+             age: PropTypes.number,
+             submit: PropTypes.func,
+           })
+         }
+
+         <Header
+           user={{
+             name: 'Tyler',
+             age: 28,
+             submit: () => ({})
+           }}
+         />
+       #+end_src
+     - =PropTypes.shape=: like =exact=, except that you can include extra properties in the passed prop
+       #+begin_src js
+         Header.propTypes = {
+           user: PropTypes.shape({
+             name: PropTypes.string,
+             age: PropTypes.number,
+             submit: PropTypes.func,
+           })
+         }
+
+         <Header
+           user={{
+             name: 'Tyler',
+             age: 28,
+             submit: () => ({}),
+             authed: true
+           }}
+         />
+       #+end_src
+     - =PropTypes.func=: a function
+     - =PropTypes.insanceOf=: prop must be an instance of a certain class, e.g.:
+       #+begin_src js
+         class User {
+           // ...
+         }
+
+         Header.propTypes = {
+           user: PropTypes.instanceOf(User)
+         }
+
+         const tyler = new User('tyler')
+         <Header user={tyler} />
+       #+end_src
+     - =PropTypes.objectOf=: prop must be an object whose values are of a certain type
+       #+begin_src js
+         List.propTypes = {
+           scores: PropTypes.objectOf(PropTypes.number)
+         }
+
+         <List scores={{
+           jake: 9,
+           tyler: 5,
+           mikenzi: 10
+         }} />
+       #+end_src
+     - =PropTypes.oneOf=: a very shitty attempt at enums (values, not types)
+       #+begin_src js
+         List.propTypes = {
+           order: PropTypes.oneOf(['ascending', 'descending'])
+           items: PropTypes.array,
+         }
+
+         <List items={users} order='ascending' />
+       #+end_src
+     - =PropTypes.oneOfType=: prop has to be one of a certain type of prop 
+       #+begin_src js
+         Post.propTypes = {
+           date: PropTypes.oneOfType([
+             PropTypes.number,
+             PropTypes.instanceOf(Date)
+           ])
+         }
+
+         <Post date={new Date()} />
+       #+end_src
+     - =PropTypes.shape=
+*** practice
+    Your job is to analyze the props that are being passed to the Badge component, then, using propTypes, validate each one.
+**** problem 1
+     #+begin_src js :tangle "practice/proptypes/problem1/index.js"
+       class Badge extends React.Component {
+         render() {
+           const { authed, style, name, handle, img, addFriend } = this.props
+    
+           if (authed !== true) {
+             return <p>You need to log in.</p>
+           }
+    
+           return (
+             <div style={style}>
+               <img 
+                 style={{width: 200, borderRadius: '50%'}} 
+                 src={img} 
+               /> 
+               <h1 style={{margin: 5}}>{name}</h1>
+               <h3 style={{margin: 5}}>@{handle}</h3>
+               <button onClick={addFriend}>Add Friend</button>
+             </div>
+           )
+         }
+       }
+
+       Badge.propTypes = {
+         name: PropTypes.string.isRequired,
+         handle: PropTypes.string.isRequired,
+         img: PropTypes.string.isRequired,
+         authed: PropTypes.bool.isRequired,
+         style: PropTypes.exact({
+           width: PropTypes.number,
+           margin: PropTypes.string,
+           border: PropTypes.string,
+           padding: PropTypes.number,
+           borderRadius: PropTypes.number,
+           display: PropTypes.string,
+           flexDirection: PropTypes.string,
+           alignItems: PropTypes.string
+         }).isRequired,
+         addFriend: PropTypes.func.isRequired
+       }
+
+       // The prop-types package has already been included for you. You can access it via "PropTypes".
+
+       console.log(PropTypes)
+
+       ReactDOM.render(
+         <Badge 
+           name='Tyler McGinnis'
+           handle='tylermcginnis'
+           img='https://avatars0.githubusercontent.com/u/2933430?v=3&s=460'
+           authed={true}
+           style={{
+             width: 300,
+             margin: '0 auto',
+             border: '3px solid #000',
+             padding: 10,
+             borderRadius: 3,
+             display: 'flex',
+             flexDirection: 'column',
+             alignItems: 'center'
+           }}
+           addFriend={() => alert('Added!')}
+         />,
+         document.getElementById('app')
+       );
+     #+end_src
