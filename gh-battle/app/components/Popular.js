@@ -9,9 +9,9 @@ export default class Popular extends React.Component {
     this.updateLang = this.updateLang.bind(this);
   }
 
-  updateLang(lang) {
+  updateLang(selected) {
     this.setState({
-      selected: lang
+      selected
     })
   }
   render() {
