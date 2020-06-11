@@ -86,6 +86,8 @@
     - [[#binding-with-new-lexical-and-windows][binding with =new=, =lexical=, and =window='s]]
     - [[#managing-state-in-react][managing state in react]]
     - [[#practice-1][practice]]
+  - [[#functional-components][functional components]]
+    - [[#pure-functions][pure functions]]
 
 * modern js
 ** lecture 1
@@ -4879,3 +4881,35 @@
          document.getElementById('app')
        );
      #+end_src
+** functional components
+   when using react, you end up having a bunch of components that don't do anything other than
+   taking in some data, via =props=, and output some ui via =render()=. that's it. now, that can be a
+   lot of boilerplate for something like hello world:
+   #+begin_src js
+     class HelloWorld extends React.Component {
+       render () {
+         return (
+           <div>Hello {this.props.name}</div>
+         )
+       }
+     }
+   #+end_src
+
+   while contrived, the whole idea of function composition applied to UI ends up creating a lot of
+   components like this. *can we make react components out of functions, instead?* /yes/
+*** pure functions
+    since a react component *must* have a =render()= function, which, in addition to es6's class syntax,
+    adds a lot of boilerplate.... let's just make a function that takes some =props= and returns UI:
+    #+begin_src js
+      function HelloWorld (props) {
+        return (
+          <div>hello, {props.name}</div>
+        )  
+      }
+    #+end_src
+
+    boom, that's it. why do this for small components? *you don't have to worry about =this= anymore*,
+    a result of your components being passed as =props= to the function.
+
+    as an aside, *react hooks* help reduce the need for frivolous component boilerplate as well, but
+    won't be touched on in this class.
