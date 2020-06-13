@@ -91,6 +91,9 @@
   - [[#validating-props-with-proptypes][validating props with PropTypes]]
     - [[#proptypes][PropTypes]]
     - [[#practice-2][practice]]
+  - [[#the-component-lifecycle][the component lifecycle]]
+    - [[#the-react-component-lifecyle][the react component lifecyle]]
+    - [[#react-icons][react icons]]
 
 * modern js
 ** lecture 1
@@ -5135,3 +5138,183 @@
          document.getElementById('app')
        );
      #+end_src
+** the component lifecycle
+   aside from managing their own state, receiving data via props, and describing UI, react
+   components often must perform other tasks. these include:
+   - ajax requests
+   - setting/removing listeners
+   - reacting to new props
+*** the react component lifecyle
+    every time a react app runs, all components go through a lifecycle consisting of three parts
+    1. when the component gets added to the DOM (*mounting*)
+    2. when the component updates its state or receives new data via props (*updating*)
+    3. when the component gets removed from the DOM (*unmounting*)
+
+**** mounting
+     think of everything that may need to occur in a typical application during and when a component
+     is mounted onto the DOM. here are some common ones:
+     - set the components initial state
+     - render DOM node
+     - make AJAX req
+     - set up listeners (websockets, firebase, etc)
+
+
+     now let's consider which *lifecycle methods* we would use to accomplish each on the list above
+
+***** set component's initial state
+
+      to set the initial state, we use the =constructor=, obviously
+      #+begin_src js
+        constructor (props) {
+          super(props);
+          this.state = {
+            thing: 'foo'
+          }
+        }
+      #+end_src
+
+***** render DOM node
+
+      once the initial state is rendered, the next lifecycle method, naturally, is =render()=. this of
+      course is not a literal rendering of the DOM itself, but by running =render=, we *describe* via
+      jsx what the /type/ of DOM node we want to render.
+
+      *it is critical that =render= is a pure function*. it shouldn't do anything other than examine the
+      component's state and props return a description of the UI
+
+***** make an AJAX req
+
+      the lifecycle method for AJAX req's is called =componentDidMount=, which is *only invoked one
+      time when the component is first mounted on to the DOM*, which makes it *ideal for making AJAX
+      requests*.
+      #+begin_src js
+        class Home extends React.Component {
+          constructor(props) {
+            super(props)
+
+            this.state = {
+              user: null
+            }
+          }
+          componentDidMount() {
+            fetchUser(this.props.username)
+              .then((user) => {
+                this.setState({ user })
+              })
+          }
+          render() {
+            if (user === null) {
+              return <Loading />
+            }
+
+            return <Dashboard data={this.state.user} />
+          }
+        }
+      #+end_src
+
+***** setting up listeners
+
+      the exact same thing as AJAX requests, i.e. use =componentDidMount=
+
+**** updating
+
+     why would we want to look into when a component has updated?
+     - re-render the UI with the updated state/props
+     - re-fetching data given the updates
+     - re-setting a listener
+
+***** re-render
+
+      as previously discussed, =render= gets auto invoked by react whenever a component is first added
+      to the DOM *and* any time after when its state changes, via =setState=, or when it receives
+      new/updated props.
+
+      this is why we say *"your View is a function of your State"* with react
+
+***** re-fetching data
+
+      whereas =componentDidMount= occurs only once, when a component gets put on the DOM, the
+      *lifecycle method =componentDidUpdate= is used for updating/re-fetching data*.
+
+      =componentDidUpdate= is invoked *after a component's local state changes or after it receives
+      new props*, but, critically, *it is not invoked after the initial render*. finally, it is given
+      two arguments, *the component's previous props* and *the component's previous state*. this allows
+      you to /compare the previous props and state to the current props and state/ so you can decide
+      what changes need to be made.
+
+      example: we want to reflect the most popular repos are for =props.language= is, and therefore
+      need to change those repos whenever =props.language= changes. this means re-fetching this data
+      from gh's API upon each update, and thus requires =componentDidUpdate= for when the new language
+      chosen isn't the same as the previous one:
+      #+begin_src js
+        class Repos extends React.Component {
+          constructor(props) {
+            super(props)
+
+            this.state = {
+              repos: null
+            }
+          }
+          componentDidMount() {
+            fetchRepos(this.props.language)
+              .then((repos) => {
+                this.setState({ repos })
+              })
+          }
+          componentDidUpdate(prevProps, prevState) {
+            if (this.props.language !== prevProps.language) {
+              this.setState({repos: null})
+
+              fetchRepos(this.props.language)
+                .then((repos) => {
+                  this.setState({ repos })
+                })
+            }
+          }
+          render() {
+            if (this.state.repos === null) {
+              return <Loading />
+            }
+
+            return <Grid data={this.state.repos} />
+          }
+        }
+      #+end_src
+
+***** re-setting a listener
+      same as re-fetching data, use =componentDidUpdate=
+
+**** Unmounting
+
+     what would we want to do when a component, and its node, gets removed from the DOM? /cleanup/.
+
+     easy example: you have a listener inside some component that is handled by =componentDidUpdate=
+     or =componentDidMount=, and now need to remove it when that component gets removed from the DOM,
+     otherwise you'll weird side effects and memory leaks. this is *where =componentWillUnmount= comes
+     into play as a lifecycle method*, which is called *immediately before a component is removed
+     from the DOM*
+     #+begin_src js
+       class Repos extends React.Component {
+         // ... 
+         // add the listener
+         componentDidMount() {
+           this.removeListener = listenToRepos(this.props.language, (repos) => {
+             this.setState({ repos })
+           })
+         }
+         // get rid of the listener before unmounting
+         componentWillUnmount() {
+           this.removeListener()
+         }
+         // ...
+       }
+     #+end_src
+
+**** other lifecycle methods
+
+     not covered, and not used nearly as often, but they do exist:
+     - =getDerivedStateFromProps=
+     - =shouldComponentUpdate=
+     - =getSnapshotBeforeUpdate=
+
+*** react icons
