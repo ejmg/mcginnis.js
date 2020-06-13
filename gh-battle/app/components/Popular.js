@@ -1,8 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { fetchPopularRepos } from '../utils/api';
 
 function LangNav({ selected, updateLang}) {
-  const languages = ['all', 'js', 'rb', 'java', 'css', 'py', 'rs', 'hs', 'elm'];
+  const languages = ['all', 'js', 'ruby', 'java', 'css', 'python', 'rust', 'haskell', 'elm'];
   
   return (
     <ul className="flex-center" >
@@ -34,23 +35,49 @@ export default class Popular extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      selected: 'all'
+      selected: 'all',
+      repos: null,
+      error: null,
     };
     this.updateLang = this.updateLang.bind(this);
+    this.isLoading = this.isLoading.bind(this);
   }
-
+  componentDidMount() {
+    this.updateLang(this.state.selected)
+  }
   updateLang(selected) {
     this.setState({
-      selected
+      selected,
+      repos: null,
+      error: null,
     })
+    fetchPopularRepos(selected)
+        .then((repos) => this.setState({
+          repos,
+          error: null
+        }))
+        .catch(() => {
+          console.warn('Error fetching repos: ', error);
+          this.setState({
+            error: `There was an error fetching the repos`
+          });
+        })
+  }
+  isLoading () {
+    return this.state.repos === null && this.state.error === null
   }
   render() {
-    const { selected } = this.state;
+    const { selected, repos, error } = this.state;
     return (
       <React.Fragment>
           <LangNav selected={ selected }
                    updateLang={ this.updateLang }>
           </LangNav>
+
+          { this.isLoading() && <p> LOADING </p> }
+          { error  && <p>{ error }</p> }
+          { repos  && <pre>{ JSON.stringify(repos, null, 2) }</pre> }
+
       </React.Fragment>
       
     )
