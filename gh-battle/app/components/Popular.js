@@ -31,12 +31,42 @@ LangNav.propTypes = {
   updateLang: PropTypes.func.isRequired
 }
 
+function ReposGrid ({ repos }) {
+  return (
+    <ul className="grid space-around">
+    {repos.map((repo, index) => {
+        const { name, owner, html_url, stargazers_count, forks, open_issues } = repo;
+        const { login, avatar_url } = owner;
+        return (
+          <li key={ html_url } className="repo bg-light">
+              <h4 className="header-lg center-text">
+                  #{index + 1}
+              </h4>
+              <img className="avatar"
+                   alt={`Avatar for ${login}`}
+                   src={ avatar_url }/>
+              <h2 className="center-text ">
+                  <a href={ html_url }>
+                      { login }
+                  </a>
+              </h2>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+ReposGrid.propTypes = {
+  repos: PropTypes.array.isRequired
+}
+
 export default class Popular extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       selected: 'all',
-      repos: null,
+      repos: {},
       error: null,
     };
     this.updateLang = this.updateLang.bind(this);
@@ -48,23 +78,32 @@ export default class Popular extends React.Component {
   updateLang(selected) {
     this.setState({
       selected,
-      repos: null,
       error: null,
     })
-    fetchPopularRepos(selected)
-        .then((repos) => this.setState({
-          repos,
-          error: null
-        }))
+
+    // if the selected lang doesn't already have an entry, add it to cache
+    if (!this.state.repos[selected]) {
+      fetchPopularRepos(selected)
+        .then((data) => {
+          this.setState(({ repos }) =>({
+            repos: {
+              ...repos,
+              [selected]: data
+            }
+          }))
+        })
         .catch(() => {
           console.warn('Error fetching repos: ', error);
           this.setState({
             error: `There was an error fetching the repos`
           });
-        })
+        })      
+    }
   }
   isLoading () {
-    return this.state.repos === null && this.state.error === null
+    const { selected, repos, error } = this.state;
+
+    return !repos[selected] && error === null
   }
   render() {
     const { selected, repos, error } = this.state;
@@ -76,7 +115,7 @@ export default class Popular extends React.Component {
 
           { this.isLoading() && <p> LOADING </p> }
           { error  && <p>{ error }</p> }
-          { repos  && <pre>{ JSON.stringify(repos, null, 2) }</pre> }
+          { repos[selected]  && <ReposGrid repos={ repos[selected] } />}
 
       </React.Fragment>
       

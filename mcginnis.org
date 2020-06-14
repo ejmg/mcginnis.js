@@ -5318,3 +5318,23 @@
      - =getSnapshotBeforeUpdate=
 
 *** react icons
+
+    =react-icons= give us access to a bunch of icons:
+    #+begin_src js
+      // Font Awesome
+      import { FaIconName } from 'react-icons/fa'
+
+      // Material Design
+      import { MdIconName } from 'react-icons/md'
+
+      // Ionicons
+      import { IoIconName } from 'react-icons/io'
+
+      // Github Octicons
+      import { GoIconName } from 'react-icons/go'
+    #+end_src
+
+    obviously, there are a lot more icons to each set.
+
+    each icon has three main props you want to typically tweak: =size= (an int), =color= (string), and
+    =className= (string for css class applied to svg rendered).
