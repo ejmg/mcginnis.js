@@ -94,6 +94,9 @@
   - [[#the-component-lifecycle][the component lifecycle]]
     - [[#the-react-component-lifecyle][the react component lifecyle]]
     - [[#react-icons][react icons]]
+  - [[#handling-form-state][handling form state]]
+    - [[#controlled-component][controlled component]]
+    - [[#uncontrolled-component][uncontrolled component]]
 
 * modern js
 ** lecture 1
@@ -5338,3 +5341,96 @@
 
     each icon has three main props you want to typically tweak: =size= (an int), =color= (string), and
     =className= (string for css class applied to svg rendered).
+** handling form state
+   react's mantra is that state lives in components and stays out of the DOM, but with forms the
+   opposite is reality: state lives in the DOM, typically in =input= fields, and needs to be grabbed
+   out of it. react has two ways of dealing with this, which split over react's philosophy and how
+   forms are normally handled.
+*** controlled component
+    *Controlled Components* are for handling forms the "react way". The *form state lives inside the
+    component's state* and the value of =input= field is *whatever the value of the component state is.*
+    To update =input= fields means you have to update the component's state.
+    
+    example:
+    #+begin_src js :tangle "react_ex/forms/HandledComponent.js"
+      class Form extends React.Component {
+        constructor(props) {
+          super(props)
+
+          this.state = {
+            email: ''
+          }
+
+          this.handleChange = this.handleChange.bind(this)
+          this.handleSubmit = this.handleSubmit.bind(this)
+        }
+        handleChange(e) {
+          this.setState({
+            email: e.target.value
+          })
+        }
+        handleSubmit() {
+          alert('The email is ' + this.state.email)
+        }
+        render() {
+          return (
+            <div>
+              <pre>The email is {this.state.email}</pre>
+              <br />
+              <input
+                type='text'
+                placeholder='Email'
+                value={this.state.email}
+                onChange={this.handleChange}
+              />
+              <button onClick={this.handleSubmit}>Submit</button>
+            </div>
+          )
+        }
+      }
+    #+end_src
+
+    now how the *value* attribute for =input= is ={this.state.email}=. Thus, to change the text inside of
+    =input= always means that we need to update =this.state.email=. react is in control of =email= and we
+    access and modify it like we would any other property attached to =this.state=
+
+    controlled components accomplish their behavior via functions =handleSubmit=, =handleChange= (????)
+*** uncontrolled component
+    *Uncontrolled components* approach forms more traditionally. *There is no component state for =input=
+     as it remains in the DOM*. Whenever you need to get the state of =input=, you pull it from the
+     DOM. To do this, we need the =createRef= method and pass it on to =input=, which allows us to
+     *access =input= from the DOM directly*
+     #+begin_src js
+       class Form extends React.Component {
+         constructor(props) {
+           super(props)
+
+           this.input = React.createRef('')
+           this.handleSubmit = this.handleSubmit.bind(this)
+         }
+         handleSubmit() {
+           alert('The email is ' + this.input.current.value)
+         }
+         render() {
+           return (
+             <div>
+               <input
+                 type='text'
+                 placeholder='Email'
+                 ref={this.input}
+               />
+               <button onClick={this.handleSubmit}>Submit</button>
+             </div>
+           )
+         }
+       }
+     #+end_src
+
+     Note that we had to remove the line:
+     #+begin_src js
+       <pre>The email is {this.state.email}</pre>
+     #+end_src
+     
+     as a result of keeping state out of our component! this is because can't know when to re-render
+     changes on the DOM, unlike with controlled components. thus, if you *want the UI to update
+     based on form state, you need to use controlled components*.
