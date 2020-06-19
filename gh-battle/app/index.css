@@ -207,11 +207,12 @@ card-list a {
 
 .btn {
     padding: 10px;
-    text-decoration: uppercase;
+    text-transform: uppercase;
     letter-spacing: 0.25em;
     border-radius: 3px;
     border: none;
     font-size: 16px;
+    display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
@@ -227,4 +228,8 @@ card-list a {
 .btn-dark:disabled {
     background: #f2f2f2;
     color: #c7c7c7;
+}
+
+.btn-space {
+    margin: 40px auto;
 }

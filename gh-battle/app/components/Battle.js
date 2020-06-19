@@ -1,6 +1,7 @@
 import React from 'react';
 import { FaUserFriends, FaFighterJet, FaTrophy, FaTimesCircle } from 'react-icons/fa';
 import PropTypes from 'prop-types';
+import Results from './Results';
 
 function Instructions() {
   return (
@@ -87,7 +88,7 @@ PlayerInput.propTypes = {
 function PlayerPreview({ username, onReset, label }) {
   return (
     <div className="column player">
-      <h3 className="player-lable">{label}</h3>
+      <h3 className="player-label">{label}</h3>
       <div className="row bg-light">
         <div className="player-info">
           <img
@@ -121,6 +122,7 @@ export default class Battle extends React.Component {
     this.state = {
       playerOne: null,
       playerTwo: null,
+      battle: false,
     };
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleReset = this.handleReset.bind(this);
@@ -136,7 +138,13 @@ export default class Battle extends React.Component {
     });
   }
   render() {
-    const { playerOne, playerTwo } = this.state;
+    const { playerOne, playerTwo, battle } = this.state;
+    if (battle === true) {
+      return (
+        <Results playerOne={ playerOne }
+                 playerTwo={ playerTwo } />
+      );
+    }
     return (
       <React.Fragment>
         <Instructions />
@@ -162,6 +170,13 @@ export default class Battle extends React.Component {
                 onReset={() => this.handleReset('playerTwo') }/>
             }
           </div>
+          { playerOne && playerTwo && (
+              <button className="btn btn-dark btn-space"
+                  onClick={() => this.setState({ battle: true })}
+              >
+                  battle!
+              </button>
+            )}
         </div>
       </React.Fragment>
     );
@@ -169,6 +184,7 @@ export default class Battle extends React.Component {
 }
 
 Battle.propTypes = {
-  playerOne: PropTypes.string.isRequired,
-  playerTwo: PropTypes.string.isRequired,
+  playerOne: PropTypes.string,
+  playerTwo: PropTypes.string,
+  battle: PropTypes.bool,
 };
