@@ -24,13 +24,13 @@ function LangNav({ selected, updateLang}) {
           ))
         }
     </ul>
-  )  
+  );
 }
 
 LangNav.propTypes = {
   selected: PropTypes.string.isRequired,
   updateLang: PropTypes.func.isRequired
-}
+};
 
 function ReposGrid ({ repos }) {
   return (
@@ -72,17 +72,17 @@ function ReposGrid ({ repos }) {
                   </li>
               </ul>
           </li>
-                      )
+        );
     })}
     </ul>
-    )
+    );
 }
 
-    ReposGrid.propTypes = {
-      repos: PropTypes.array.isRequired
-    }
+ReposGrid.propTypes = {
+  repos: PropTypes.array.isRequired
+};
 
-    export default class Popular extends React.Component {
+export default class Popular extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -94,13 +94,13 @@ function ReposGrid ({ repos }) {
     this.isLoading = this.isLoading.bind(this);
   }
   componentDidMount() {
-    this.updateLang(this.state.selected)
+    this.updateLang(this.state.selected);
   }
   updateLang(selected) {
     this.setState({
       selected,
       error: null,
-    })
+    });
 
     // if the selected lang doesn't already have an entry, add it to cache
     if (!this.state.repos[selected]) {
@@ -111,20 +111,20 @@ function ReposGrid ({ repos }) {
               ...repos,
               [selected]: data
             }
-          }))
+          }));
         })
         .catch(() => {
           console.warn('Error fetching repos: ', error);
           this.setState({
             error: `There was an error fetching the repos`
           });
-        })      
+        });  
     }
   }
   isLoading () {
     const { selected, repos, error } = this.state;
 
-    return !repos[selected] && error === null
+    return !repos[selected] && error === null;
   }
   render() {
     const { selected, repos, error } = this.state;
@@ -139,8 +139,7 @@ function ReposGrid ({ repos }) {
           { repos[selected]  && <ReposGrid repos={ repos[selected] } />}
 
       </React.Fragment>
-      
-    )
+    );
   }
 }
 
