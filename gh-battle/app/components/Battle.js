@@ -29,7 +29,7 @@ function Instructions () {
             </li>
         </ol>
     </div>
-  )
+  );
 }
 
 class PlayerInput extends React.Component {
@@ -50,7 +50,7 @@ class PlayerInput extends React.Component {
   handleChange (e) {
     this.setState({
       username: e.target.value
-    })
+    });
   }
   render () {
     return (
@@ -75,7 +75,7 @@ class PlayerInput extends React.Component {
               </button>
           </div>
       </form>
-    )
+    );
   }
 }
 
@@ -85,12 +85,45 @@ PlayerInput.propTypes = {
 };
 
 export default class Battle extends React.Component {
+  constructor (props) {
+    super(props);
+    this.state = {
+      playerOne: null,
+      playerTwo: null,
+    };
+    this.handleSubmit = this.handleSubmit.bind(this);
+  }
+  handleSubmit (id, player) {
+    this.setState({
+      [id]: player
+    });
+  }
   render () {
+    const { playerOne, playerTwo } = this.state;
     return (
       <React.Fragment>
           <Instructions />
-          <PlayerInput label="player input form" onSubmit={ (value) => console.log(value) } />
+          <div className="players-container">
+              <h1 className="center-text header-lg">players</h1>
+              <div className="row space-around">
+                  { playerOne === null && (
+                      <PlayerInput label="player one"
+                                   onSubmit={ (player)  => this.handleSubmit('playerOne', player)}
+                      />
+                    )}
+                  { playerTwo === null && (
+                      <PlayerInput label="player two"
+                                   onSubmit={ (player) => this.handleSubmit('playerTwo', player) }
+                      />
+                    )}
+              </div>
+          </div>
       </React.Fragment>
-    )
+    );
   }
+}
+
+Battle.propTypes = {
+  playerOne: PropTypes.string.isRequired,
+  playerTwo: PropTypes.string.isRequired,
 }
