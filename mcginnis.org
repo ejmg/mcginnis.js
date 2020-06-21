@@ -97,6 +97,8 @@
   - [[#handling-form-state][handling form state]]
     - [[#controlled-component][controlled component]]
     - [[#uncontrolled-component][uncontrolled component]]
+  - [[#composition-with-children][composition with children]]
+    - [[#children-in-react][children in react]]
 
 * modern js
 ** lecture 1
@@ -5434,3 +5436,48 @@
      as a result of keeping state out of our component! this is because can't know when to re-render
      changes on the DOM, unlike with controlled components. thus, if you *want the UI to update
      based on form state, you need to use controlled components*.
+** composition with children
+*** children in react
+
+    props are how you pass data into components, which is done just like setting attributes in html.
+    #+begin_src js
+    // normal html
+    <a href="/" class="link">home</a>
+
+    // component
+    <Clock time="12:00" period="AM"/>
+    #+end_src
+
+    /what other ways can we pass information?/ with normal html, this would be the literal text that
+    occurs between html tags, like ="home"= above and, say, the text between =<title></title>= for this
+    webpage. /what if we did this with components?/
+
+    #+begin_src js
+      <Header>hello</Header>
+      <Container>
+        <h1>Some element</h1>
+        <p> etc... </p>
+      </Container>
+    #+end_src
+
+    With react, we can do exactly this. *children components* are components that are passed *inside
+    the tags of other components* and are accessible via *the =props.children= property*
+
+    #+begin_src js
+      function Header ({ children }) {
+        return (
+          <h1 className='header'>
+            {children}
+          </h1>
+        )
+      }
+
+      function Container ({ children }) {
+        return (
+          <div>
+            <Logo />
+            {children}
+          </div>
+        )
+      }
+    #+end_src
