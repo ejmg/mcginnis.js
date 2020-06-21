@@ -99,6 +99,11 @@
     - [[#uncontrolled-component][uncontrolled component]]
   - [[#composition-with-children][composition with children]]
     - [[#children-in-react][children in react]]
+  - [[#building-reusable-components][building reusable components]]
+    - [[#default-props][default props]]
+    - [[#default-props-for-class-components][default props for class components]]
+    - [[#default-props-for-functional-components][default props for functional components]]
+  - [[#code-sharing][code sharing]]
 
 * modern js
 ** lecture 1
@@ -5481,3 +5486,38 @@
         )
       }
     #+end_src
+** building reusable components
+*** default props
+
+   a common functional requirement is to allow customization of an application and these
+   customizations often override a /default/ setting. this pattern comes up all the time with react
+   apps by no surprise.
+
+*** default props for class components
+    =defaultProps= is a static property you can define on a *class component* that sets the default
+    value for the component's prop(s). =defaultProps= is an object whose *keys represent the props
+    being passed to the component* and whose values are *default*
+
+    #+begin_src js
+      class NewUser extends React.Component {
+         // ...
+      }
+      NewUser.defaultProps = {
+        profileColor: '#ffffff'
+      }
+    #+end_src
+
+    Now if someone consumes =NewUser= without passing =profileColor= as a prop, the default profile
+    color will be set to =#ffffff=
+
+*** default props for functional components
+
+    to set a default prop value for functional components, we have to leverage the es6 *Default
+    Parameters* feature. Combined with destructuring, we can set a default value for a prop.
+
+    #+begin_src js
+      function NewUser ({ profileColor = '#ffffff'}) {
+        // ...
+      }
+    #+end_src
+** code sharing
