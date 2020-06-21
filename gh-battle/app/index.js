@@ -14,10 +14,10 @@ class App extends React.Component {
     render() {
         return (
             <div className="container">
-                {/* <Battle /> */}
-                <Popular />
+                <Battle /> 
+                {/* <Popular /> */}
             </div>
-        )
+        );
         // after babel, our jsx becomes:
         // return React.createElement("div", null, "Hello World!")
     }
