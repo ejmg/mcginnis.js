@@ -104,6 +104,11 @@
     - [[#default-props-for-class-components][default props for class components]]
     - [[#default-props-for-functional-components][default props for functional components]]
   - [[#code-sharing][code sharing]]
+    - [[#higher-order-components][higher order components]]
+    - [[#recall-higher-order-functions][recall higher order functions]]
+    - [[#back-to-higher-order-components][back to higher-order components]]
+    - [[#more-hoc-details][more HOC details]]
+    - [[#hoc-and-inversion-of-control][HOC and inversion of control]]
 
 * modern js
 ** lecture 1
@@ -589,8 +594,8 @@
     #+end_src
 *** shorthand method
     *shorthand method names*: when a function is a property on an object, that makes it a *method*. As
-     of ES6, when constructing an object that has a function as a field you can now omit the
-     =function= keyword entirely.
+    of ES6, when constructing an object that has a function as a field you can now omit the
+    =function= keyword entirely.
 
      The following:
      #+begin_src js
@@ -620,7 +625,7 @@
                    // save message    
                }  
            }
-       }     
+       }
      #+end_src
 ** lecture 5
 *** computed views
@@ -1313,8 +1318,7 @@
        promise2.then(onSuccess);
        promise2.catch(onError);
      #+end_src
-
-     
+    
 *** chaining
     both =then()= and =catch()= *return a promise*. this is critical because it then allow us to *chain*
     promises.
@@ -1979,7 +1983,6 @@
     will return an error.
 
 ** lecture 12
-
 *** why modules
     - reusability
     - composability
@@ -5521,3 +5524,323 @@
       }
     #+end_src
 ** code sharing
+*** higher order components
+    
+    D.R.Y. principle is Don't Repeat Yourself, big meme but also typically good. How do with react
+    tho?
+
+    let's say we have a info dashboard like stripe's and want a nice hover popup for each lil
+    graph/infobox we hover our mouse over. we have three components to worry about, =Info=,
+    =TrendChart=, and =DailyChart=. how do we add that functionality?
+
+    first idea might be to simply handle it with =onMouseOver= and =onMouseOut= that react comes with,
+    out of the box.
+
+    let's work on =Info= first:
+    #+begin_src js
+      class Info extends React.Component {
+        render() {
+          return (
+            <svg
+              className="Icon-svg Icon--hoverable-svg"
+              height={this.props.height}
+              viewBox="0 0 16 16" width="16">
+                <path d="M9 8a1 1 0 0 0-1-1H5.5a1 1 0 1 0 0 2H7v4a1 1 0 0 0 2 0zM4 0h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4zm4 5.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+            </svg>
+          )
+        }
+      }
+    #+end_src
+
+    - *onMouseOver* takes a function that is invoked when a component is hovered over
+    - *onMouseOut* takes a function that is invoked when a component is no longer hovered over
+
+      
+    implementing this functionality =the react way=, let's add =hovering= as a state property and modify
+    it via the methods above:
+    #+begin_src js
+      class Info extends React.Component {
+        state = { hovering: false }
+        mouseOver = () => this.setState({ hovering: true })
+        mouseOut = () => this.setState({ hovering: false })
+        render() {
+          return (
+            <div onMouseOver={this.mouseOver} onMouseOut={this.mouseOut}>
+              {this.state.hovering === true
+                ? <Tooltip id='info' />
+                : null}
+              <svg
+                className="Icon-svg Icon--hoverable-svg"
+                height={this.props.height}
+                viewBox="0 0 16 16" width="16">
+                  <path d="M9 8a1 1 0 0 0-1-1H5.5a1 1 0 1 0 0 2H7v4a1 1 0 0 0 2 0zM4 0h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4zm4 5.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+              </svg>
+            </div>
+          )
+        }
+      }
+    #+end_src
+
+    we can do the exact same thing for the other two components and it will work, but then we would
+    be /performing a ton of code duplication/. how can we reduce that overhead?
+
+    - our problem: add tooltip hover logic to each component without code duplication
+    - our solution: *higher order components*
+
+*** recall higher order functions
+
+    that's really it, just recall how, in JS, functions are first class citizens and can be passed
+    around just like any other value:
+
+    #+begin_src js
+      function hello (name) {
+        console.log(`Hello, ${name}!`)
+      }
+
+      function hola (nombre) {
+        console.log(`¡Hola, ${nombre}!`)
+      }
+
+      function buildGreeting(greetingFn, name) {
+        return function () { return greetingFn(name); };
+      }
+
+      holaFn = buildGreeting(hola, "elias");
+      helloFn = buildGreeting(hello, "elias");
+
+      holaFn(); // ¡Hola, elias!
+      helloFn(); // Hello, elias!
+    #+end_src
+
+    =buildGreeting= is a *higher order function*: we pass it two arguments, one of which is a function
+    itself. =buildGreeting= uses this other function to create yet a new function, which is a greeting
+    function we customized via the passed-in function. the passed-in function is called a *callback*
+    function.
+
+    as a total aside, the fact we reduced the number of arguments from 2 to 1 by /partially applying/
+    them is an example of *partial application*.
+
+    other examples of HO functions include utilizing methods like =.map=, which take a function to
+    apply to the input, and functions like =onClick=, which take functions and apply them to browser
+    events:
+    #+begin_src js
+      [1,2,3].map((i) => i + 5);
+
+      $('#btn').on('click', () =>
+        console.log('Callbacks are everywhere')
+      )
+    #+end_src
+
+*** back to higher-order components
+    
+    take the characteristics of higher order functions:
+    - are a function themselves
+    - take a *callback* function as an argument
+    - (can) return a new function by partial application
+      + this new function then applies the function we passed, possibly on remaining input
+
+        
+    now apply this to higher order components and our problem with hover state:
+    - is a component
+    - takes a component as an argument
+    - return a new component
+    - the component returned renders the original component that was passed in
+
+      #+begin_src js
+        function higherOrderComponent (Component) {
+          return class extends React.Component {
+            render() {
+              return <Component />
+            }
+          }
+        }
+      #+end_src
+
+      
+    returning to hover state, we want a HOC that helps eliminate the duplication of the following
+    code:
+    #+begin_src js
+    state = { hovering: false }
+    mouseOver = () => this.setState({ hovering: true })
+    mouseOut = () => this.setState({ hovering: false })
+    #+end_src
+
+    
+    let's call this HOC =withHover=, which will then return us a new component that performs its
+    original behavior /and/ the new hovering logic, i.e.:
+    #+begin_src js
+      const InfoWithHover = withHover(Info);
+    #+end_src
+
+    yields the component:
+    #+begin_src js
+      function Info ({ hovering, height }) {
+        return (
+            <>
+            {hovering === true
+             ? <Tooltip id='info' />
+             : null}
+            <svg
+          className="Icon-svg Icon--hoverable-svg"
+          height={height}
+          viewBox="0 0 16 16" width="16">
+            <path d="M9 8a1 1 0 0 0-1-1H5.5a1 1 0 1 0 0 2H7v4a1 1 0 0 0 2 0zM4 0h8a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4zm4 5.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+            </svg>
+            </>
+        )
+      }
+    #+end_src
+
+    =withHover= needs to:
+    - take a component argument
+    - return a new component
+    - render the original component argument, passing it a hovering prop
+
+**** take a component
+
+     #+begin_src js
+       function withHover (Component) {
+         // todo
+       }
+     #+end_src
+
+**** return a new component
+     
+     #+begin_src js
+       function withHover (Component) {
+         return class WithHover extends React.Component {
+          // todo
+         }
+       }
+     #+end_src
+
+**** render the component with hovering prop
+
+     #+begin_src js
+       function withHover(Component) {
+
+         return class WithHover extends React.Component {
+           // add the state and methods as we did for Info
+           state = { hovering: false }
+           mouseOver = () => this.setState({ hovering: true })
+           mouseOut = () => this.setState({ hovering: false })
+
+           // inside render, wrap the Component argument in a div that gets
+           // the mouse events attached as props
+           render() {
+             return (
+               <div onMouseOver={this.mouseOver} onMouseOut={this.mouseOut}>
+                 // pass hovering state as a prop to the Component
+                 <Component hovering={this.state.hovering} />
+               </div>
+             );
+           }
+         }
+       }
+     #+end_src
+
+
+     the react docs describe HOC with the following comparison:
+     #+begin_quote
+      a component transforms props into UI, a higher-order component transforms a component into
+      another component.
+     #+end_quote
+
+     wow
+
+*** more HOC details 
+**** naming collisions
+     what if the component being passed already has a prop named =hovering=? a *naming collision* would
+     occur and would probably break the application.
+
+     one solution is to simply enable the naming of the prop to be passed into the component. simply
+     modify our HOC to take one more function, the name of the prop to be added:
+     #+begin_src js
+       function withHover(Component, propName = 'hovering') {  return class WithHover extends React.Component {
+           state = { hovering: false }
+           mouseOver = () => this.setState({ hovering: true })
+           mouseOut = () => this.setState({ hovering: false })
+           render() {
+             const props = { 
+               [propName]: this.state.hovering      
+             }
+             return (
+                 <div onMouseOver={this.mouseOver} onMouseOut={this.mouseOut}>
+                   <Component {...props} />        
+                 </div>
+             );
+           }
+         }
+       }
+     #+end_src
+
+**** passing other props unrelated to the HOC
+
+     there is another problem with =withHover=: note how =Info= also takes a =height= property, but with
+     the current implementation this will end up as =undefined=. why? because =withHover= is the one
+     rendering =Component=, and we are clearly not passing any other props to =Component= besides
+     =hovering=! So even if we pass the prop to a component returned from =withHover=, while it will
+     exist in the prop, it won't get used:
+     #+begin_src js
+       const InfoWithHover = withHover(Info);
+       // later somewhere else in a render ()
+       return <InfoWithHover height="16px" />;
+     #+end_src
+     looking inside of =InfoWithHover= we see this:
+     #+begin_src js
+       function withHover(Component, propName = 'hovering') {
+         return class WithHover extends React.Component {    
+           state = { hovering: false }    
+           mouseOver = () => this.setState({ hovering: true })    
+           mouseOut = () => this.setState({ hovering: false })    
+
+           render() {      
+             console.log(this.props) // { height: "16px" }      
+             const props = {        
+               [propName]: this.state.hovering      
+             }      
+             return (        
+                 <div onMouseOver={this.mouseOver} 
+                      onMouseOut={this.mouseOut}>          
+                 // we fail to pass it on correctly
+                 <Component {...props} />        
+                 </div>      
+             );    
+           }
+         }
+       }
+     #+end_src
+     
+
+     we can solve this by making sure our computed =props= includes the remainder of the original
+     props passed:
+     #+begin_src js
+       // snip
+       render() {
+         const props = {
+           [propName]: this.state.hovering,
+           // we pass the rest of our props, including `height` here, in the construction
+           // of our new props object
+           ...this.props,
+         }
+
+         return (
+             <div onMouseOver={this.mouseOver} 
+                  onMouseOut={this.mouseOut}>
+               <Component {...props} />
+             </div>
+         );
+       }
+     #+end_src
+
+*** HOC and inversion of control
+
+    when using HOC, there is an *inversion of control* occurring, especially if done with 3rd party
+    libraries.
+
+    using react router as an example, when you pass your component to =withRouter=, react router says
+    it will add =match=, =location=, and =history= props to it. you are, by definition, not creating your
+    own component here. react router is doing it for you, and you have to trust they are doing it as
+    you intended and as they described. It doesn't matter how you define your component, the
+    /resulting component/ returned by react router is the actual component you will be using, and it
+    is react router that ultimately determines how that component renders!
