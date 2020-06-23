@@ -3,6 +3,7 @@ import { battle } from '../utils/api';
 import Card from './Card';
 import Loading from './Loading';
 import PropTypes from 'prop-types';
+import Tooltip from './Tooltip';
 import {FaCompass, FaBriefcase, FaUsers, FaUserFriends, FaCode, FaUser } from 'react-icons/fa';
 
 function ProfileList ({ profile }) {
@@ -13,14 +14,18 @@ function ProfileList ({ profile }) {
         </li>
         { profile.location && (
             <li>
-                <FaCompass color="rgb(144, 115, 255)" size={ 22 } />
-                { profile.location }
+                <Tooltip  text="user's location">
+                    <FaCompass color="rgb(144, 115, 255)" size={ 22 } />
+                    { profile.location }
+                </Tooltip>
             </li>
           )}
         { profile.company && (
             <li>
-                <FaBriefcase color="#795548" size={ 22 } />
-                { profile.company }
+                <Tooltip text="user's company">
+                    <FaBriefcase color="#795548" size={ 22 } />
+                    { profile.company }
+                </Tooltip>
             </li>
           )}
         <li>
@@ -38,8 +43,6 @@ function ProfileList ({ profile }) {
 ProfileList.propTypes = {
   profile: PropTypes.object.isRequired,
 };
-
-
 
 export default class Results extends React.Component {
   constructor (props) {
