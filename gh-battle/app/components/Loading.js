@@ -26,7 +26,7 @@ export default class Loading extends React.Component {
     this.interval = window.setInterval(() => {
       this.state.content === text + '...'
       ? this.setState({ content: text })
-      : this.setState(( { content }) => ({ content: content + '.'}));
+      : this.setState(({ content }) => ({ content: content + '.'}));
     }, speed);
   }
   componentWillUnmount () {
@@ -42,7 +42,7 @@ export default class Loading extends React.Component {
 }
 
 Loading.defaultProps = {
-  content: 'loading',
+  text: 'loading',
   speed: 300,
 };
 
